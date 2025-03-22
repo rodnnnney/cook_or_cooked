@@ -1,0 +1,16 @@
+2025-03-22 11:07:34,353 - __main__ - INFO - Starting chat with prompt: 'tell me about university of toronto'
+2025-03-22 11:07:34,385 - __main__ - INFO - Sending request to Cohere API
+2025-03-22 11:07:40,823 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v1/chat "HTTP/1.1 200 OK"
+2025-03-22 11:07:40,834 - __main__ - INFO - Received response from Cohere API
+2025-03-22 11:33:19,756 - __main__ - INFO - Starting chat with prompt: 'Solve for x in the following equation: 2x² - 5x + 3 = 0. Show your work and explain your reasoning'
+2025-03-22 11:33:19,795 - __main__ - INFO - Sending request to Cohere API
+2025-03-22 11:33:22,920 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v1/chat "HTTP/1.1 200 OK"
+2025-03-22 11:33:22,928 - __main__ - INFO - Received response from Cohere API
+2025-03-22 11:34:07,556 - __main__ - INFO - Starting chat with prompt: 'Solve for x in the following equation: 2x² - 5x + 3 = 0. Show your work and explain your reasoning'
+2025-03-22 11:34:07,590 - __main__ - INFO - Sending request to Cohere API
+2025-03-22 11:34:10,509 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v1/chat "HTTP/1.1 200 OK"
+2025-03-22 11:34:10,515 - __main__ - INFO - Received response from Cohere API
+2025-03-22 11:37:11,257 - __main__ - INFO - Starting chat with prompt: 'Solve for x in the following equation: 2x² - 5x + 3 = 0. Show your work and explain your reasoning'
+2025-03-22 11:37:11,338 - __main__ - INFO - Sending request to Cohere API
+2025-03-22 11:37:14,587 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v1/chat "HTTP/1.1 200 OK"
+2025-03-22 11:37:14,604 - __main__ - INFO - Received response from Cohere API
