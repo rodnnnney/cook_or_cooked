@@ -1,10 +1,17 @@
 import { Tabs } from "expo-router";
 import React from "react";
 import { FontAwesome } from "@expo/vector-icons";
+import { View, TouchableOpacity } from "react-native";
 
 const _Layout = () => {
   return (
-    <Tabs>
+    <Tabs
+      screenOptions={{
+        tabBarStyle: {
+          height: 60,
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
@@ -22,6 +29,33 @@ const _Layout = () => {
           headerShown: false,
           tabBarIcon: ({ color }) => (
             <FontAwesome name="search" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="create"
+        options={{
+          title: "",
+          headerShown: false,
+          tabBarIcon: () => (
+            <View
+              style={{
+                backgroundColor: "#007AFF",
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                justifyContent: "center",
+                alignItems: "center",
+                marginBottom: 24,
+                shadowColor: "#000",
+                shadowOpacity: 0.2,
+                shadowOffset: { width: 0, height: 2 },
+                shadowRadius: 4,
+                elevation: 4,
+              }}
+            >
+              <FontAwesome name="plus" size={24} color="white" />
+            </View>
           ),
         }}
       />
