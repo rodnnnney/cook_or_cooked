@@ -10,6 +10,9 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { FontAwesome } from "@expo/vector-icons";
 import supabase from "@/utils/supabase";
+import { analyzeImage } from "@/utils/groq";
+import * as FileSystem from "expo-file-system";
+import { decode } from "base64-arraybuffer";
 
 const Create = () => {
   const [image, setImage] = useState<string | null>(null);
@@ -62,41 +65,59 @@ const Create = () => {
       // Create a unique file name
       const fileExt = image.split(".").pop()?.toLowerCase() || "jpg";
       const fileName = `upload-${Date.now()}.${fileExt}`;
+      const mimeType = fileExt === "png" ? "image/png" : "image/jpeg";
 
-      // Create a FormData object
-      const formData = new FormData();
+      console.log("Starting upload for image:", image);
 
-      // Append the image as a file object
-      formData.append("file", {
-        uri: image,
-        name: fileName,
-        type: fileExt === "png" ? "image/png" : "image/jpeg",
-      } as any); // Type assertion needed for React Native
-
-      // Get Supabase storage endpoint
-      const supabaseUrl = `${supabase.supabaseUrl}/storage/v1/object/food/public/${fileName}`;
-
-      // Make a direct fetch to the Supabase API
-      const response = await fetch(supabaseUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${supabase.supabaseKey}`,
-          "x-upsert": "true", // Enable upsert
-        },
-        body: formData,
+      // Read the file as base64
+      const base64 = await FileSystem.readAsStringAsync(image, {
+        encoding: FileSystem.EncodingType.Base64,
       });
+      console.log("File content length:", base64.length);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.error || `Upload failed with status: ${response.status}`
+      // Convert base64 to ArrayBuffer using the decode function from base64-arraybuffer
+      const arrayBuffer = decode(base64);
+
+      // Upload to Supabase using ArrayBuffer
+      const { data, error } = await supabase.storage
+        .from("food")
+        .upload(`public/${fileName}`, arrayBuffer, {
+          contentType: mimeType,
+          upsert: true,
+        });
+
+      console.log("Upload response:", { data, error });
+      if (error) throw error;
+
+      // Get the public URL
+      const publicUrl = supabase.storage
+        .from("food")
+        .getPublicUrl(`public/${fileName}`).data.publicUrl;
+
+      console.log("Image uploaded successfully. Public URL:", publicUrl);
+
+      try {
+        console.log("Attempting to analyze image...");
+        const analysisResult = await analyzeImage(publicUrl);
+        console.log(
+          "Analysis result:",
+          JSON.stringify(analysisResult, null, 2)
+        );
+
+        Alert.alert("Success", "Image uploaded and analyzed successfully!");
+        setImage(null);
+      } catch (analysisError) {
+        console.error("Analysis error:", analysisError);
+        Alert.alert(
+          "Analysis Failed",
+          "Image was uploaded but couldn't be analyzed. " +
+            (analysisError instanceof Error
+              ? analysisError.message
+              : "Unknown error")
         );
       }
-
-      Alert.alert("Success", "Image uploaded successfully!");
-      setImage(null);
     } catch (error) {
-      console.error("Upload error:", error);
+      console.error("Detailed error:", error);
       Alert.alert(
         "Upload Failed",
         error instanceof Error
