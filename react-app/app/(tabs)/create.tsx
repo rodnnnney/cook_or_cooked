@@ -29,7 +29,6 @@ const Create = () => {
   };
 
   const takePhoto = async () => {
-    // Request camera permissions
     const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
 
     if (cameraPermission.status !== "granted") {

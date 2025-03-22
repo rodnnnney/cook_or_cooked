@@ -41,9 +41,9 @@ const _Layout = () => {
             <View
               style={{
                 backgroundColor: "#007AFF",
-                width: 56,
-                height: 56,
-                borderRadius: 28,
+                width: 64,
+                height: 64,
+                borderRadius: 32,
                 justifyContent: "center",
                 alignItems: "center",
                 marginBottom: 24,
