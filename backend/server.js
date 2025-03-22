@@ -1,5 +1,11 @@
 import OpenAI from "openai";
 import dotenv from 'dotenv';
+import express from "express";
+import cors from "cors";
+import multer from "multer";
+import { v4 as uuidv4 } from "uuid";
+import fs from "fs";
+import path from "path";
 
 dotenv.config();
 if (!process.env.OPENAI_API_KEY) {
@@ -9,14 +15,6 @@ if (!process.env.OPENAI_API_KEY) {
 
 
 // server.js
-const express = require("express");
-const cors = require("cors");
-const multer = require("multer");
-const { v4: uuidv4 } = require("uuid");
-const fs = require("fs");
-const path = require("path");
-
-// Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -123,7 +121,7 @@ const analyzeImage = async (imagePath, given_restaurant_price = null, given_home
     if (mealInfo.restaurantPrice > 2 * mealInfo.estimatedHomeCookedPrice) { // adjust for inflation and other factors (labour, transport, etc)
         mealInfo.estimatedHomeCookedPrice = mealInfo.restaurantPrice / 2.1231;
     }
-    mealInfo.saving = mealInfo.restaurantPrice - mealInfo.estimatedHomeCookedPrice;
+    
     if (given_restaurant_price != null) {
         mealInfo.restaurantPrice = given_restaurant_price;
     }
@@ -131,6 +129,8 @@ const analyzeImage = async (imagePath, given_restaurant_price = null, given_home
         mealInfo.estimatedHomeCookedPrice = given_homecooked_price;
     }
     
+    mealInfo.saving = mealInfo.restaurantPrice - mealInfo.estimatedHomeCookedPrice;
+    console.log(mealInfo);
     return mealInfo;
   
   };
@@ -303,4 +303,4 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-module.exports = app; // For testing
+export default app;
