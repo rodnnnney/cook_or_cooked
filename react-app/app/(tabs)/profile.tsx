@@ -1,15 +1,11 @@
-import React, {Component} from 'react';
-import {Text, View} from 'react-native';
+import { Text, View } from "react-native";
 
-const Profile = () => {
+const Index = () => {
+  return (
+    <View>
+      <Text>Index</Text>
+    </View>
+  );
+};
 
-    return (
-        <View>
-            <Text>
-                Profile
-            </Text>
-        </View>
-    );
-}
-
-export default Profile;
+export default Index;
