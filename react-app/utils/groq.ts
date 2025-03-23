@@ -1,5 +1,6 @@
 import { Groq } from "groq-sdk";
 import OpenAI from "openai";
+import { ingredientPrices } from "./ingredientPrices";
 
 // React Native environment variables are accessed via process.env.EXPO_PUBLIC_*
 // Make sure your .env file has EXPO_PUBLIC_OPENAI_API_KEY defined
@@ -7,7 +8,9 @@ const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 
 // Ensure the API key is available
 if (!OPENAI_API_KEY) {
-  throw new Error("OpenAI API key not found in environment variables. Please add EXPO_PUBLIC_OPENAI_API_KEY to your .env file.");
+  throw new Error(
+    "OpenAI API key not found in environment variables. Please add EXPO_PUBLIC_OPENAI_API_KEY to your .env file."
+  );
 }
 
 // Initialize OpenAI client with the provided API key
@@ -55,6 +58,90 @@ export interface FoodCardData {
 const normalizePrice = (price: number, digits = 2): number => {
   // Round to specified digits
   return Math.round(price * Math.pow(10, digits)) / Math.pow(10, digits);
+};
+
+const updateIngredientPrices = (
+  recipe: RecipeIngredient[]
+): RecipeIngredient[] => {
+  // Create a copy of the recipe to avoid modifying the original
+  const updatedRecipe = [...recipe];
+
+  // Helper function to normalize ingredient names (lowercase, no spaces or symbols)
+  const normalizeIngredientName = (name: string): string => {
+    return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  };
+
+  // Create a normalized version of our ingredients dictionary for matching
+  const normalizedIngredientPrices: {
+    [key: string]: { originalKey: string; price: number };
+  } = {};
+
+  // Populate the normalized dictionary
+  Object.keys(ingredientPrices).forEach((key) => {
+    const normalizedKey = normalizeIngredientName(key);
+    normalizedIngredientPrices[normalizedKey] = {
+      originalKey: key,
+      price: ingredientPrices[key],
+    };
+  });
+
+  // Loop through each ingredient in the recipe
+  for (let i = 0; i < updatedRecipe.length; i++) {
+    const ingredient = updatedRecipe[i];
+
+    // Get the normalized ingredient name
+    const normalizedIngredientName = normalizeIngredientName(ingredient.type);
+
+    // Try to find the exact ingredient name in our normalized dictionary
+    if (normalizedIngredientPrices[normalizedIngredientName] !== undefined) {
+      // Update the price if found
+      updatedRecipe[i] = {
+        ...ingredient,
+        pricePerGram:
+          normalizedIngredientPrices[normalizedIngredientName].price,
+      };
+      continue;
+    }
+
+    // If not found, try to find a partial match
+    const partialMatches = Object.keys(normalizedIngredientPrices).filter(
+      (key) =>
+        normalizedIngredientName.includes(key) ||
+        key.includes(normalizedIngredientName)
+    );
+
+    if (partialMatches.length > 0) {
+      // Sort by length descending to prioritize more specific matches
+      // e.g., "groundbeef" over just "beef"
+      partialMatches.sort((a, b) => b.length - a.length);
+
+      // Update the price with the best match
+      updatedRecipe[i] = {
+        ...ingredient,
+        pricePerGram: normalizedIngredientPrices[partialMatches[0]].price,
+      };
+    }
+    // If no match found, keep the original price
+  }
+
+  return updatedRecipe;
+};
+
+/**
+ * Recalculate the total home-cooked price based on updated ingredient prices
+ */
+const recalculateHomeCookedPrice = (recipe: RecipeIngredient[]): number => {
+  let totalPrice = 0;
+
+  for (const ingredient of recipe) {
+    totalPrice += ingredient.amount * ingredient.pricePerGram;
+  }
+
+  // Add a small markup for utilities and miscellaneous ingredients (e.g., salt, pepper, oil)
+  // You can adjust this percentage as needed
+  const utilityMarkup = 1.15; // 15% markup
+
+  return totalPrice * utilityMarkup;
 };
 
 /**
@@ -132,7 +219,7 @@ If any information cannot be determined from the image, make educated estimates 
 
     // STEP 2: Format the analysis into JSON structure
     const formattingCallStartTime = performance.now();
-    
+
     const formattingPrompt = `
 Format the following food analysis into a strict JSON format with these properties:
 - meal: string (name of the meal)
@@ -184,6 +271,22 @@ ${analysisText}`;
       try {
         mealInfo = JSON.parse(jsonResponse) as MealAnalysis;
         console.log("Successfully parsed JSON response");
+        
+        // *** Add these lines to update the ingredient prices ***
+        console.log("Updating ingredient prices with accurate data");
+        
+        // Update ingredient prices with our dictionary values
+        mealInfo.recipe = updateIngredientPrices(mealInfo.recipe);
+        
+        // Recalculate the home-cooked price based on our updated ingredient prices
+        if (!given_homecooked_price) {
+          // Only recalculate if user didn't provide a specific price
+          const recalculatedPrice = recalculateHomeCookedPrice(mealInfo.recipe);
+          
+          // Consider both the AI-generated price and our recalculated price
+          // We can use a weighted average or just take the recalculated value
+          mealInfo.estimatedHomeCookedPrice = recalculatedPrice;
+        }
       } catch (initialParseError) {
         console.error("Initial JSON parse error:", initialParseError);
         
@@ -266,20 +369,20 @@ ${analysisText}`;
     } catch (parseError) {
       console.error("Failed to parse meal information:", parseError);
       console.error("Raw JSON response:", jsonResponse);
-      
+
       // Create fallback data for recovery
       console.log("Creating fallback meal data");
       const fallbackMeal: MealAnalysis = {
         meal: "Food Dish",
         recipe: [],
-        estimatedHomeCookedPrice: 15.00,
-        restaurantPrice: 35.00,
-        saving: 20.00
+        estimatedHomeCookedPrice: 15.0,
+        restaurantPrice: 35.0,
+        saving: 20.0,
       };
-      
+
       // Cache the fallback result for consistent failure behavior
       analysisCache[cacheKey] = JSON.parse(JSON.stringify(fallbackMeal));
-      
+
       return fallbackMeal;
     }
   } catch (apiError) {
@@ -328,13 +431,13 @@ export const processUploadedFoodImage = async (
       mealAnalysis.estimatedHomeCookedPrice = normalizePrice(avgPrice * 0.6); // 40% below average
       mealAnalysis.saving = normalizePrice(mealAnalysis.restaurantPrice - mealAnalysis.estimatedHomeCookedPrice);
     }
-    
+
     // Calculate savings percentage
     const savingsPercentage = normalizePrice(
       (mealAnalysis.saving / mealAnalysis.restaurantPrice) * 100,
       1 // Round to 1 decimal place
     );
-    
+
     // Create card display data with consistent decimal places
     const cardData: FoodCardData = {
       title: mealAnalysis.meal,
@@ -343,9 +446,9 @@ export const processUploadedFoodImage = async (
       savings: normalizePrice(mealAnalysis.saving),
       savingsPercentage: savingsPercentage,
       ingredients: mealAnalysis.recipe,
-      imageUrl: imageUrl
+      imageUrl: imageUrl,
     };
-    
+
     return cardData;
   } catch (error) {
     console.error("Error processing food image:", error);
