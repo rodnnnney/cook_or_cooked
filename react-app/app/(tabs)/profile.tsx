@@ -104,9 +104,9 @@ const Profile = () => {
 
         {!loading && !error && dishes.length > 0 && (
           <View className="w-full bg-white rounded-xl p-4 mb-4 shadow">
-            <View className="flex-row justify-between items-center">
-              <View className="items-center p-3 bg-blue-50 rounded-lg">
-                <Text className="text-sm text-blue-600 font-medium">
+            <View className="flex-col space-y-3 py-2">
+              <View className="w-full p-3 bg-blue-50 rounded-lg">
+                <Text className="text-sm text-blue-600 font-medium py-2">
                   Total Dishes
                 </Text>
                 <Text className="text-2xl font-bold text-blue-800">
@@ -114,7 +114,7 @@ const Profile = () => {
                 </Text>
               </View>
 
-              <View className="items-center p-3 bg-green-50 rounded-lg">
+              <View className="w-full p-3 bg-green-50 rounded-lg">
                 <Text className="text-sm text-green-600 font-medium">
                   Total Saved
                 </Text>
@@ -159,15 +159,27 @@ const Profile = () => {
                 <Text className="text-sm text-gray-600 mb-1">
                   {new Date(dish.created_at).toLocaleDateString()}
                 </Text>
-                <Text className="text-sm font-medium text-green-600">
-                  Home Cooked: ${dish.estimatedHomeCookedPrice}
-                </Text>
-                <Text className="text-sm font-medium text-red-500">
-                  Restaurant: ${dish.resturantPrice}
-                </Text>
+                <View className="flex-row items-center justify-between">
+                  <View>
+                    <Text className="text-sm font-medium text-green-600">
+                      Home: ${dish.estimatedHomeCookedPrice}
+                    </Text>
+                    <Text className="text-sm font-medium text-red-500">
+                      Restaurant: ${dish.resturantPrice}
+                    </Text>
+                  </View>
+                  <View className="bg-green-50 px-2 py-1 rounded-md">
+                    <Text className="text-xs text-green-700 font-semibold">
+                      Save $
+                      {(
+                        dish.resturantPrice - dish.estimatedHomeCookedPrice
+                      ).toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
               </View>
               {expandedDish !== dish.id && (
-                <View className="justify-center">
+                <View className="justify-center ml-1">
                   <Ionicons name="chevron-down" size={20} color="#999" />
                 </View>
               )}
@@ -195,7 +207,9 @@ const Profile = () => {
                 </Text>
                 <Text className="text-sm bg-green-50 p-2 rounded-md mt-2">
                   Savings: $
-                  {dish.resturantPrice - dish.estimatedHomeCookedPrice}
+                  {(
+                    dish.resturantPrice - dish.estimatedHomeCookedPrice
+                  ).toFixed(2)}
                 </Text>
               </View>
             )}
