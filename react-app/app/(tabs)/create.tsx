@@ -11,7 +11,11 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { FontAwesome } from "@expo/vector-icons";
 import supabase from "@/utils/supabase";
-import { analyzeImage, processUploadedFoodImage, FoodCardData } from "@/utils/groq";
+import {
+  analyzeImage,
+  processUploadedFoodImage,
+  FoodCardData,
+} from "@/utils/groq";
 import * as FileSystem from "expo-file-system";
 import { decode } from "base64-arraybuffer";
 import FoodSavingsCard from "@/components/FoodSavingsCard";
@@ -25,7 +29,7 @@ const Create = () => {
   const pickImage = async () => {
     // Reset states
     setFoodCardData(null);
-    
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -41,7 +45,7 @@ const Create = () => {
   const takePhoto = async () => {
     // Reset states
     setFoodCardData(null);
-    
+
     const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
 
     if (cameraPermission.status !== "granted") {
@@ -109,63 +113,91 @@ const Create = () => {
         setUploading(false);
         setAnalyzing(true);
         console.log("Attempting to analyze image with OpenAI GPT-4o...");
-        
+
         // Verify the URL is valid and accessible
         console.log("Image URL for analysis:", publicUrl);
-        
+
         try {
           // Test that the image URL is accessible
-          const response = await fetch(publicUrl, { method: 'HEAD' });
+          const response = await fetch(publicUrl, { method: "HEAD" });
           if (!response.ok) {
-            console.error("Image URL not accessible:", publicUrl, "Status:", response.status);
+            console.error(
+              "Image URL not accessible:",
+              publicUrl,
+              "Status:",
+              response.status
+            );
             throw new Error(`Image URL not accessible: ${response.statusText}`);
           }
           console.log("Image URL is accessible, status:", response.status);
         } catch (fetchError) {
           console.error("Error verifying image URL:", fetchError);
           // Continue anyway, as the error might be due to CORS, but OpenAI might still access it
-          console.log("Continuing with analysis despite URL verification error");
+          console.log(
+            "Continuing with analysis despite URL verification error"
+          );
         }
-        
+
         // Use our processUploadedFoodImage function to get structured card data
         const cardData = await processUploadedFoodImage(publicUrl);
         console.log("Food card data:", JSON.stringify(cardData, null, 2));
-        
+
+        // Insert data using the correct column names from the schema
+        const { data: insertData, error: insertError } = await supabase
+          .from("genai")
+          .insert({
+            meal: cardData.title,
+            image: publicUrl,
+            estimatedHomeCookedPrice: cardData.homeCookedPrice,
+            recipe: cardData.ingredients,
+            homeCooked: true,
+            resturantPrice: cardData.restaurantPrice,
+            created_at: new Date().toISOString(),
+          });
+
+        if (insertError) {
+          console.error("Error inserting data into genai table:", insertError);
+          throw new Error(
+            `Failed to save analysis data: ${insertError.message}`
+          );
+        }
+
+        console.log("Analysis data saved to genai table:", insertData);
+
         // Set the card data to display it
         setFoodCardData(cardData);
         setAnalyzing(false);
-        
+
         // Show success message
         Alert.alert(
           "Analysis Complete",
-          `Successfully analyzed ${cardData.title}. You could save $${cardData.savings.toFixed(2)} by cooking at home!`
+          `Successfully analyzed ${
+            cardData.title
+          }. You could save $${cardData.savings.toFixed(2)} by cooking at home!`
         );
       } catch (analysisError) {
         console.error("Analysis error:", analysisError);
         let errorMessage = "Image was uploaded but couldn't be analyzed.";
-        
+
         if (analysisError instanceof Error) {
           errorMessage += " " + analysisError.message;
           console.error("Error details:", analysisError.stack);
         } else {
           console.error("Unknown error type:", typeof analysisError);
         }
-        
+
         setAnalyzing(false);
-        Alert.alert(
-          "Analysis Failed",
-          errorMessage
-        );
+        Alert.alert("Analysis Failed", errorMessage);
       }
     } catch (error) {
       console.error("Upload error:", error);
       let errorMessage = "An error occurred during upload";
-      
+
       if (error instanceof Error) {
         errorMessage = error.message;
         console.error("Error details:", error.stack);
       }
-      
+
       setUploading(false);
       setAnalyzing(false);
       Alert.alert("Upload Failed", errorMessage);
@@ -230,17 +262,23 @@ const Create = () => {
                 {uploading ? (
                   <>
                     <ActivityIndicator color="white" />
-                    <Text className="text-white font-bold ml-2">Uploading...</Text>
+                    <Text className="text-white font-bold ml-2">
+                      Uploading...
+                    </Text>
                   </>
                 ) : analyzing ? (
                   <>
                     <ActivityIndicator color="white" />
-                    <Text className="text-white font-bold ml-2">Analyzing food image...</Text>
+                    <Text className="text-white font-bold ml-2">
+                      Analyzing food image...
+                    </Text>
                   </>
                 ) : (
                   <>
                     <FontAwesome name="cloud-upload" size={20} color="white" />
-                    <Text className="text-white font-bold ml-2">Analyze Food</Text>
+                    <Text className="text-white font-bold ml-2">
+                      Analyze Food
+                    </Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -251,13 +289,15 @@ const Create = () => {
         {foodCardData && (
           <View className="mb-5">
             <FoodSavingsCard cardData={foodCardData} />
-            
+
             <TouchableOpacity
               className="bg-blue-500 py-4 rounded-lg flex-row items-center justify-center mt-5"
               onPress={resetAll}
             >
               <FontAwesome name="refresh" size={20} color="white" />
-              <Text className="text-white font-bold ml-2">Analyze Another Image</Text>
+              <Text className="text-white font-bold ml-2">
+                Analyze Another Image
+              </Text>
             </TouchableOpacity>
           </View>
         )}
