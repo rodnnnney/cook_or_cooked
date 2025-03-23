@@ -214,172 +214,214 @@ const Create = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.contentWrapper}>
-        <Text style={styles.headerText}>
-          Food Cost Analyzer
-        </Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Add Meal</Text>
+      </View>
 
-        {!foodCardData && (
-          <>
-            <View style={styles.imageContainer}>
-              {image ? (
-                <Image source={{ uri: image }} style={styles.previewImage} />
-              ) : (
-                <View style={styles.placeholderContainer}>
-                  <FontAwesome name="image" size={80} color="#444444" />
-                  <Text style={styles.placeholderText}>
-                    No image selected
-                  </Text>
-                </View>
-              )}
-            </View>
+      {!image ? (
+        <View style={styles.uploadContainer}>
+          <View style={styles.placeholderContainer}>
+            <FontAwesome name="image" size={60} color="#CCCCCC" />
+            <Text style={styles.placeholderText}>
+              Take or upload a photo of your meal
+            </Text>
+          </View>
 
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={pickImage}
-              >
-                <FontAwesome name="photo" size={20} color="#FFFFFF" />
-                <Text style={styles.buttonText}>Gallery</Text>
-              </TouchableOpacity>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
+              <FontAwesome name="photo" size={24} color="#FFFFFF" />
+              <Text style={styles.uploadButtonText}>Choose From Gallery</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={takePhoto}
-              >
-                <FontAwesome name="camera" size={20} color="#FFFFFF" />
-                <Text style={styles.buttonText}>Camera</Text>
-              </TouchableOpacity>
-            </View>
-
-            {image && (
-              <TouchableOpacity
-                style={[
-                  styles.primaryButton,
-                  (uploading || analyzing) && styles.disabledButton
-                ]}
-                onPress={uploadImage}
-                disabled={uploading || analyzing}
-              >
-                {uploading ? (
-                  <>
-                    <ActivityIndicator color="white" />
-                    <Text style={styles.buttonText}>
-                      Uploading...
-                    </Text>
-                  </>
-                ) : analyzing ? (
-                  <>
-                    <ActivityIndicator color="white" />
-                    <Text style={styles.buttonText}>
-                      Analyzing food image...
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <FontAwesome name="cloud-upload" size={20} color="white" />
-                    <Text style={styles.buttonText}>
-                      Analyze Food
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
-          </>
-        )}
-
-        {foodCardData && (
-          <View style={styles.resultContainer}>
-            <FoodSavingsCard cardData={foodCardData} />
-
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={resetAll}
-            >
-              <FontAwesome name="refresh" size={20} color="white" />
-              <Text style={styles.buttonText}>
-                Analyze Another Image
-              </Text>
+            <TouchableOpacity style={styles.uploadButton} onPress={takePhoto}>
+              <FontAwesome name="camera" size={24} color="#FFFFFF" />
+              <Text style={styles.uploadButtonText}>Take Photo</Text>
             </TouchableOpacity>
           </View>
-        )}
-      </View>
+        </View>
+      ) : (
+        <View style={styles.imagePreviewContainer}>
+          <Image source={{ uri: image }} style={styles.imagePreview} />
+
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={styles.circleButton}
+              onPress={() => {
+                setImage(null);
+                setFoodCardData(null);
+              }}
+            >
+              <FontAwesome name="trash" size={24} color="#E74C3C" />
+            </TouchableOpacity>
+
+            {!uploading && !analyzing && !foodCardData && (
+              <TouchableOpacity
+                style={[styles.circleButton, styles.analyzeButton]}
+                onPress={uploadImage}
+              >
+                <FontAwesome name="check" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {(uploading || analyzing) && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#00AA5B" />
+              <Text style={styles.loadingText}>
+                {uploading
+                  ? "Uploading image..."
+                  : "Analyzing your meal... This might take a minute."}
+              </Text>
+            </View>
+          )}
+
+          {foodCardData && (
+            <View style={styles.analysisResultContainer}>
+              <FoodSavingsCard cardData={foodCardData} />
+              <TouchableOpacity
+                style={styles.resetButton}
+                onPress={resetAll}
+              >
+                <Text style={styles.resetButtonText}>Take Another Photo</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1, 
-    backgroundColor: "#0D0D0D",
+    flex: 1,
+    backgroundColor: "#F7F9FC",
   },
-  contentWrapper: {
-    padding: 20,
+  header: {
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0, 0, 0, 0.05)",
   },
-  headerText: {
+  headerTitle: {
     fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-    color: "#FFFFFF",
+    fontWeight: "600",
+    color: "#333333",
   },
-  imageContainer: {
-    height: 300,
-    width: "100%",
-    borderRadius: 16,
-    overflow: "hidden",
-    backgroundColor: "#171717",
-    marginBottom: 20,
-    justifyContent: "center",
+  uploadContainer: {
+    padding: 20,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#232323",
-  },
-  previewImage: {
-    width: "100%",
-    height: "100%",
   },
   placeholderContainer: {
-    alignItems: "center",
+    width: "100%",
+    height: 250,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
     justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   placeholderText: {
-    marginTop: 8,
-    color: "#777777",
+    marginTop: 16,
     fontSize: 16,
+    textAlign: "center",
+    color: "#666666",
+    paddingHorizontal: 20,
+  },
+  buttonContainer: {
+    width: "100%",
+    gap: 12,
+  },
+  uploadButton: {
+    backgroundColor: "#00AA5B",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+    borderRadius: 12,
+    width: "100%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  uploadButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 10,
+  },
+  imagePreviewContainer: {
+    padding: 20,
+  },
+  imagePreview: {
+    width: "100%",
+    height: 300,
+    borderRadius: 16,
+    marginBottom: 16,
   },
   buttonRow: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    marginBottom: 20,
+    justifyContent: "space-between",
+    marginBottom: 16,
   },
-  primaryButton: {
-    backgroundColor: "#19E08B",
-    paddingVertical: 14,
-    borderRadius: 12,
-    flexDirection: "row",
+  circleButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  analyzeButton: {
+    backgroundColor: "#00AA5B",
+  },
+  loadingContainer: {
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 20,
+    backgroundColor: "#FFFFFF",
+    padding: 20,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  secondaryButton: {
-    backgroundColor: "#369BFF",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    textAlign: "center",
+    color: "#666666",
+  },
+  analysisResultContainer: {
+    marginTop: 20,
+  },
+  resetButton: {
+    backgroundColor: "#F0F0F0",
+    padding: 16,
     borderRadius: 12,
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    marginTop: 20,
   },
-  disabledButton: {
-    backgroundColor: "rgba(25, 224, 139, 0.5)",
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    marginLeft: 8,
-  },
-  resultContainer: {
-    marginBottom: 20,
+  resetButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333333",
   },
 });
 

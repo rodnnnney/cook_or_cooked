@@ -99,7 +99,7 @@ const FoodSavingsCard: React.FC<FoodSavingsCardProps> = ({ cardData, onPress }) 
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#171717',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -141,12 +141,12 @@ const styles = StyleSheet.create({
   restaurantPrice: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#F78F1E', // Orange for restaurant
+    color: '#EB5757', // Red for restaurant
   },
   homeCookedPrice: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#369BFF', // Blue for home cooked
+    color: '#19E08B', // Wealthsimple green for home cooked
   },
   savingsContainer: {
     backgroundColor: 'rgba(25, 224, 139, 0.15)',

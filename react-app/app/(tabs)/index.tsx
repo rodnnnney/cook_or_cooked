@@ -194,12 +194,12 @@ const ChartKitDemo = () => {
       datasets: [
         {
           data: timeSeriesData.restaurantData,
-          color: (opacity = 1) => `rgba(134, 65, 244, ${opacity})`, // Purple for restaurant prices
+          color: (opacity = 1) => `rgba(235, 87, 87, ${opacity})`, // Red for restaurant prices
           strokeWidth: 2,
         },
         {
           data: timeSeriesData.homeCookedData,
-          color: (opacity = 1) => `rgba(66, 194, 244, ${opacity})`, // Blue for home cooked prices
+          color: (opacity = 1) => `rgba(0, 170, 91, ${opacity})`, // Wealthsimple green for home cooked prices
           strokeWidth: 2,
         },
       ],
@@ -217,7 +217,7 @@ const ChartKitDemo = () => {
       datasets: [
         {
           data: timeSeriesData.savingsData,
-          color: (opacity = 1) => `rgba(46, 204, 113, ${opacity})`, // Green for savings
+          color: (opacity = 1) => `rgba(0, 170, 91, ${opacity})`, // Wealthsimple green
           strokeWidth: 3,
         },
       ],
@@ -244,51 +244,51 @@ const ChartKitDemo = () => {
       {
         name: "Home Cost",
         population: totalHomeCookedCost,
-        color: "#36A2EB",
-        legendFontColor: "#7F7F7F",
+        color: "#A0A5B1",
+        legendFontColor: "#555555",
         legendFontSize: 12,
       },
       {
         name: "Savings",
         population: savings,
-        color: "#FFCE56",
-        legendFontColor: "#7F7F7F",
+        color: "#00AA5B",
+        legendFontColor: "#555555",
         legendFontSize: 12,
       },
     ];
   };
 
-  // Chart configurations - updated for dark theme
+  // Chart configurations - updated for Wealthsimple-like light theme
   const chartConfig = {
-    backgroundColor: "#0D0D0D",
-    backgroundGradientFrom: "#0D0D0D",
-    backgroundGradientTo: "#171717",
+    backgroundColor: "#FFFFFF",
+    backgroundGradientFrom: "#FFFFFF",
+    backgroundGradientTo: "#F7F9FC",
     decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+    color: (opacity = 1) => `rgba(33, 36, 38, ${opacity})`,
+    labelColor: (opacity = 1) => `rgba(33, 36, 38, ${opacity})`,
     style: {
       borderRadius: 16,
     },
     propsForDots: {
       r: "5",
       strokeWidth: "2",
-      stroke: "#0D0D0D",
+      stroke: "#FFFFFF",
     },
   };
 
   const lineChartConfig = {
     ...chartConfig,
-    color: (opacity = 1) => `rgba(46, 213, 115, ${opacity})`,
+    color: (opacity = 1) => `rgba(0, 170, 91, ${opacity})`,
     strokeWidth: 2,
     propsForBackgroundLines: {
       strokeDasharray: "",
-      stroke: "rgba(255, 255, 255, 0.07)",
+      stroke: "rgba(33, 36, 38, 0.07)",
     },
   };
 
   const barChartConfig = {
     ...chartConfig,
-    color: (opacity = 1) => `rgba(72, 149, 239, ${opacity})`,
+    color: (opacity = 1) => `rgba(0, 170, 91, ${opacity})`,
     barPercentage: 0.8,
   };
 
@@ -316,8 +316,12 @@ const ChartKitDemo = () => {
   return (
     <ScrollView style={styles.container}>
       {/* Time period filter buttons */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Meal Savings</Text>
+      </View>
+      
       <View style={styles.filterContainer}>
-        <Text style={styles.filterLabel}>Time Period:</Text>
+        <Text style={styles.filterLabel}>Time Period</Text>
         <View style={styles.buttonGroup}>
           <TouchableOpacity 
             style={[styles.filterButton, selectedTimePeriod === 'week' && styles.activeButton]} 
@@ -354,31 +358,48 @@ const ChartKitDemo = () => {
         </View>
       </View>
       
+      {/* Overall savings summary */}
+      {savingsData && (
+        <View style={styles.summaryContainer}>
+          <Text style={styles.summaryValue}>
+            ${(savingsData[1].population).toFixed(0)}
+          </Text>
+          <Text style={styles.summaryLabel}>Total Savings</Text>
+        </View>
+      )}
+      
       {/* Savings over time chart */}
       {savingsTimeSeriesData && (
         <View style={styles.chartContainer}>
           <Text style={styles.title}>Savings Over Time</Text>
-          <LineChart
-            data={savingsTimeSeriesData}
-            width={screenWidth - 40}
-            height={220}
-            chartConfig={{
-              ...lineChartConfig,
-              color: (opacity = 1) => `rgba(25, 224, 139, ${opacity})`,
-            }}
-            bezier
-            style={styles.chart}
-            yAxisSuffix="$"
-            fromZero
-            onDataPointClick={handleDataPointClick}
-          />
+          <View style={styles.chartWrapper}>
+            <LineChart
+              data={savingsTimeSeriesData}
+              width={screenWidth - 50} // Adjusted width to fit inside container
+              height={220}
+              chartConfig={{
+                ...lineChartConfig,
+                color: (opacity = 1) => `rgba(0, 170, 91, ${opacity})`, // Wealthsimple green
+                propsForDots: {
+                  r: "4",
+                  strokeWidth: "2",
+                  stroke: "#FFFFFF",
+                },
+              }}
+              bezier
+              style={styles.chart}
+              yAxisSuffix="$"
+              fromZero
+              onDataPointClick={handleDataPointClick}
+            />
+          </View>
           {selectedDataPoint && selectedDataPoint.dataset === 0 && (
             <View style={styles.dataPointInfo}>
               <Text style={styles.dataPointText}>
                 Period: {savingsTimeSeriesData.labels[selectedDataPoint.index]}
               </Text>
-              <Text style={styles.dataPointText}>
-                Savings: ${selectedDataPoint.value.toFixed(2)}
+              <Text style={styles.dataPointValue}>
+                ${selectedDataPoint.value.toFixed(2)}
               </Text>
             </View>
           )}
@@ -388,42 +409,60 @@ const ChartKitDemo = () => {
       {/* Restaurant vs Home cooking comparison chart */}
       {priceComparisonData && (
         <View style={styles.chartContainer}>
-          <Text style={styles.title}>Restaurant vs Home Cooking Prices</Text>
-          <LineChart
-            data={{
-              ...priceComparisonData,
-              datasets: [
-                {
-                  ...priceComparisonData.datasets[0],
-                  color: (opacity = 1) => `rgba(247, 143, 30, ${opacity})`, // Orange for restaurant
+          <Text style={styles.title}>Restaurant vs Home Cooking</Text>
+          <View style={styles.chartWrapper}>
+            <LineChart
+              data={{
+                ...priceComparisonData,
+                datasets: [
+                  {
+                    ...priceComparisonData.datasets[0],
+                    color: (opacity = 1) => `rgba(235, 87, 87, ${opacity})`, // Red for restaurant
+                  },
+                  {
+                    ...priceComparisonData.datasets[1],
+                    color: (opacity = 1) => `rgba(0, 170, 91, ${opacity})`, // Wealthsimple green for home
+                  },
+                ]
+              }}
+              width={screenWidth - 50} // Adjusted width to fit inside container
+              height={220}
+              chartConfig={{
+                ...lineChartConfig,
+                propsForDots: {
+                  r: "4",
+                  strokeWidth: "2",
+                  stroke: "#FFFFFF",
                 },
-                {
-                  ...priceComparisonData.datasets[1],
-                  color: (opacity = 1) => `rgba(54, 155, 255, ${opacity})`, // Blue for home
-                },
-              ]
-            }}
-            width={screenWidth - 40}
-            height={220}
-            chartConfig={lineChartConfig}
-            bezier
-            style={styles.chart}
-            yAxisSuffix="$"
-            fromZero
-            onDataPointClick={handleDataPointClick}
-          />
-          <Text style={styles.legend}>
-            <Text style={styles.orangeDot}>●</Text> Restaurant Price{"  "}
-            <Text style={styles.blueDot}>●</Text> Home Cooked Price
-          </Text>
+              }}
+              bezier
+              style={styles.chart}
+              yAxisSuffix="$"
+              fromZero
+              onDataPointClick={handleDataPointClick}
+            />
+          </View>
+          <View style={styles.legendContainer}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: 'rgba(235, 87, 87, 1)' }]} />
+              <Text style={styles.legendText}>Restaurant</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: 'rgba(0, 170, 91, 1)' }]} />
+              <Text style={styles.legendText}>Home Cooked</Text>
+            </View>
+          </View>
           
           {selectedDataPoint && (
             <View style={styles.dataPointInfo}>
               <Text style={styles.dataPointText}>
-                Period: {priceComparisonData.labels[selectedDataPoint.index]}
+                {priceComparisonData.labels[selectedDataPoint.index]}
               </Text>
-              <Text style={styles.dataPointText}>
-                {selectedDataPoint.dataset === 0 ? 'Restaurant' : 'Home Cooked'} Cost: ${selectedDataPoint.value.toFixed(2)}
+              <Text style={styles.dataPointValue}>
+                ${selectedDataPoint.value.toFixed(2)}
+              </Text>
+              <Text style={styles.dataPointSubtext}>
+                {selectedDataPoint.dataset === 0 ? 'Restaurant' : 'Home Cooked'}
               </Text>
             </View>
           )}
@@ -433,30 +472,32 @@ const ChartKitDemo = () => {
       {/* Overall savings pie chart */}
       {savingsData && (
         <View style={styles.chartContainer}>
-          <Text style={styles.title}>Cost Savings Analysis</Text>
-          <PieChart
-            data={[
-              {
-                ...savingsData[0],
-                color: "#369BFF", // Bright blue for home cost
-                legendFontColor: "#CCCCCC", // Light gray for text
-              },
-              {
-                ...savingsData[1],
-                color: "#19E08B", // Bright green for savings
-                legendFontColor: "#CCCCCC", // Light gray for text
-              },
-            ]}
-            width={screenWidth - 40}
-            height={220}
-            chartConfig={chartConfig}
-            accessor="population"
-            backgroundColor="transparent"
-            paddingLeft="15"
-            absolute={false}
-            style={styles.chart}
-            hasLegend={true}
-          />
+          <Text style={styles.title}>Cost Breakdown</Text>
+          <View style={styles.chartWrapper}>
+            <PieChart
+              data={[
+                {
+                  ...savingsData[0],
+                  color: "#A0A5B1", // Light grey for home cost
+                  legendFontColor: "#555555",
+                },
+                {
+                  ...savingsData[1],
+                  color: "#00AA5B", // Wealthsimple green for savings
+                  legendFontColor: "#555555",
+                },
+              ]}
+              width={screenWidth - 50} // Adjusted width to fit inside container
+              height={220}
+              chartConfig={chartConfig}
+              accessor="population"
+              backgroundColor="transparent"
+              paddingLeft="15"
+              absolute={false}
+              style={styles.chart}
+              hasLegend={true}
+            />
+          </View>
         </View>
       )}
     </ScrollView>
@@ -466,63 +507,111 @@ const ChartKitDemo = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0D0D0D", // Darker background
-    padding: 16,
+    backgroundColor: "#F7F9FC", // Light background similar to Wealthsimple
+    padding: 0,
+  },
+  header: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0, 0, 0, 0.05)",
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#333333",
   },
   chartContainer: {
-    backgroundColor: "#171717", // Slightly lighter dark background for contrast
+    backgroundColor: "#FFFFFF", // White background for cards
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
+    marginHorizontal: 20,
     marginVertical: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    overflow: 'hidden', // Ensures content doesn't overflow
+  },
+  chartWrapper: {
+    alignItems: 'center', // Center the chart
+    marginHorizontal: -5, // Adjust margins to prevent overflow
+  },
+  summaryContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 24,
+    marginHorizontal: 20,
+    marginVertical: 12,
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  summaryValue: {
+    fontSize: 40,
+    fontWeight: "700",
+    color: "#00AA5B", // Wealthsimple green
+    marginBottom: 4,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: "#666666",
+    fontWeight: "500",
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "600",
-    marginBottom: 16,
-    textAlign: "center",
-    color: "#FFFFFF", // Pure white for titles
+    marginBottom: 20,
+    color: "#333333",
   },
   chart: {
     borderRadius: 16,
-    marginVertical: 12,
-    paddingVertical: 4,
+    paddingVertical: 8,
   },
   loadingText: {
     fontSize: 16,
     textAlign: "center",
     marginTop: 100,
-    color: "#CCCCCC", // Light text for dark background
+    color: "#666666",
   },
   errorText: {
     fontSize: 16,
     textAlign: "center",
     marginTop: 100,
-    color: "#FF5C5C", // Softer red for errors
+    color: "#E74C3C",
   },
-  legend: {
-    textAlign: "center",
-    marginTop: 8,
-    fontSize: 14,
-    color: "#CCCCCC", // Light text
+  legendContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 16,
+    marginBottom: 8,
   },
-  orangeDot: {
-    color: "rgba(247, 143, 30, 1)",
-    fontSize: 18,
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 12,
   },
-  blueDot: {
-    color: "rgba(54, 155, 255, 1)",
-    fontSize: 18,
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 6,
+  },
+  legendText: {
+    fontSize: 13,
+    color: "#666666",
   },
   filterContainer: {
-    flexDirection: 'column',
     marginVertical: 12,
-    padding: 16,
-    backgroundColor: '#171717', // Dark background
+    padding: 20,
+    marginHorizontal: 20,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -531,10 +620,10 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   filterLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 12,
-    color: '#FFFFFF', // White text
+    marginBottom: 16,
+    color: '#333333',
   },
   buttonGroup: {
     flexDirection: 'row',
@@ -543,34 +632,45 @@ const styles = StyleSheet.create({
   filterButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 24,
-    backgroundColor: '#232323', // Dark button background
+    borderRadius: 20,
+    backgroundColor: '#F0F0F0',
     minWidth: 70,
     alignItems: 'center',
   },
   activeButton: {
-    backgroundColor: '#19E08B', // Bright green for active button
+    backgroundColor: '#00AA5B', // Wealthsimple green
   },
   filterButtonText: {
     fontSize: 14,
-    color: '#999999', // Gray for inactive text
+    color: '#666666',
+    fontWeight: '500',
   },
   activeButtonText: {
-    color: '#0D0D0D', // Black text on green button for contrast
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
   dataPointInfo: {
-    backgroundColor: 'rgba(255, 255, 255, 0.07)', // Very subtle light background
-    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    padding: 16,
     borderRadius: 12,
-    marginTop: 12,
+    marginTop: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(0, 170, 91, 0.3)',
+    alignItems: 'center',
   },
   dataPointText: {
     fontSize: 14,
-    marginBottom: 4,
-    color: '#CCCCCC', // Light text
+    color: '#666666',
+  },
+  dataPointValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#00AA5B',
+    marginVertical: 6,
+  },
+  dataPointSubtext: {
+    fontSize: 13,
+    color: '#666666',
   },
 });
 
