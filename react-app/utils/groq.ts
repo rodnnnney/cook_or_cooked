@@ -1,13 +1,24 @@
 import { Groq } from "groq-sdk";
 import OpenAI from "openai";
-import dotenv from "dotenv";
 
-dotenv.config();
+// React Native environment variables are accessed via process.env.EXPO_PUBLIC_*
+// Make sure your .env file has EXPO_PUBLIC_OPENAI_API_KEY defined
+const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+
+// Ensure the API key is available
+if (!OPENAI_API_KEY) {
+  throw new Error("OpenAI API key not found in environment variables. Please add EXPO_PUBLIC_OPENAI_API_KEY to your .env file.");
+}
 
 // Initialize OpenAI client with the provided API key
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: OPENAI_API_KEY,
 });
+
+console.log("OpenAI API Key status: Found in environment variables");
+
+// Simple in-memory cache to store previous analysis results by image URL
+const analysisCache: Record<string, MealAnalysis> = {};
 
 // Add proper TypeScript interfaces for the return type
 interface RecipeIngredient {
@@ -36,6 +47,17 @@ export interface FoodCardData {
 }
 
 /**
+ * Normalizes a price to ensure consistency
+ * @param price The price to normalize
+ * @param digits Number of decimal digits to round to (default: 2)
+ * @returns Normalized price value
+ */
+const normalizePrice = (price: number, digits = 2): number => {
+  // Round to specified digits
+  return Math.round(price * Math.pow(10, digits)) / Math.pow(10, digits);
+};
+
+/**
  * Analyzes a food image using OpenAI's GPT-4 Vision model
  */
 export const analyzeImage = async (
@@ -50,6 +72,16 @@ export const analyzeImage = async (
   if (!imagePath || (!imagePath.startsWith('http://') && !imagePath.startsWith('https://'))) {
     console.error("Invalid image URL:", imagePath);
     throw new Error("Invalid image URL. URL must start with http:// or https://");
+  }
+
+  // Check cache first to ensure consistent results for the same image
+  const cacheKey = imagePath + 
+    (given_restaurant_price !== undefined && given_restaurant_price !== null ? `-r${given_restaurant_price}` : '') +
+    (given_homecooked_price !== undefined && given_homecooked_price !== null ? `-h${given_homecooked_price}` : '');
+  
+  if (analysisCache[cacheKey]) {
+    console.log("Using cached analysis for:", imagePath);
+    return JSON.parse(JSON.stringify(analysisCache[cacheKey])); // Return a deep copy of the cached result
   }
 
   try {
@@ -84,6 +116,7 @@ If any information cannot be determined from the image, make educated estimates 
           },
         ],
         max_tokens: 1024,
+        temperature: 0, // Set to 0 for maximum consistency
       });
     } catch (modelError) {
       console.error("OpenAI model error:", modelError);
@@ -128,7 +161,7 @@ ${analysisText}`;
           }
         ],
         response_format: { type: "json_object" },
-        temperature: 0.2,
+        temperature: 0,
         max_tokens: 1024,
       });
     } catch (formattingError) {
@@ -185,34 +218,49 @@ ${analysisText}`;
         if (!mealInfo.restaurantPrice) mealInfo.restaurantPrice = 35.00;
       }
 
+      // Normalize ingredient prices for consistency
+      if (mealInfo.recipe && mealInfo.recipe.length > 0) {
+        mealInfo.recipe = mealInfo.recipe.map(ingredient => ({
+          ...ingredient,
+          amount: normalizePrice(ingredient.amount, 0), // Round to whole grams
+          pricePerGram: normalizePrice(ingredient.pricePerGram, 3) // 3 decimal places for price per gram
+        }));
+      }
+
+      // Normalize prices for consistency
+      mealInfo.estimatedHomeCookedPrice = normalizePrice(mealInfo.estimatedHomeCookedPrice);
+      mealInfo.restaurantPrice = normalizePrice(mealInfo.restaurantPrice);
+
       // Apply adjustments and overrides
       if (mealInfo.restaurantPrice > 2 * mealInfo.estimatedHomeCookedPrice) {
-        mealInfo.estimatedHomeCookedPrice = mealInfo.restaurantPrice / 2.12;
+        mealInfo.estimatedHomeCookedPrice = normalizePrice(mealInfo.restaurantPrice / 2.12);
       }
 
       if (given_restaurant_price !== null && given_restaurant_price !== undefined) {
-        mealInfo.restaurantPrice = given_restaurant_price;
+        mealInfo.restaurantPrice = normalizePrice(given_restaurant_price);
       }
 
       if (given_homecooked_price !== null && given_homecooked_price !== undefined) {
-        mealInfo.estimatedHomeCookedPrice = given_homecooked_price;
+        mealInfo.estimatedHomeCookedPrice = normalizePrice(given_homecooked_price);
       }
 
       // Ensure home-cooked price is always lower than restaurant price
       if (mealInfo.estimatedHomeCookedPrice >= mealInfo.restaurantPrice) {
-        console.log("Home-cooked price is higher than restaurant price, swapping values");
-        // Swap the values
-        const temp = mealInfo.restaurantPrice;
-        mealInfo.restaurantPrice = mealInfo.estimatedHomeCookedPrice * 1.5; // Make restaurant price 50% higher
-        mealInfo.estimatedHomeCookedPrice = temp * 0.7; // Make home-cooked price 30% lower
+        console.log("Home-cooked price is higher than restaurant price, adjusting values");
+        // To ensure consistent results, use fixed ratio instead of percentage calculation
+        mealInfo.restaurantPrice = normalizePrice(Math.max(20, mealInfo.estimatedHomeCookedPrice * 1.5));
+        mealInfo.estimatedHomeCookedPrice = normalizePrice(mealInfo.restaurantPrice * 0.6);
       }
 
-      // Calculate savings
-      mealInfo.saving = mealInfo.restaurantPrice - mealInfo.estimatedHomeCookedPrice;
+      // Calculate savings with consistent rounding
+      mealInfo.saving = normalizePrice(mealInfo.restaurantPrice - mealInfo.estimatedHomeCookedPrice);
 
       const endTime = performance.now();
       const totalDuration = (endTime - startTime) / 1000;
       console.log("Total analysis time:", totalDuration.toFixed(2), "seconds");
+      
+      // Cache the result for future requests
+      analysisCache[cacheKey] = JSON.parse(JSON.stringify(mealInfo));
       
       return mealInfo;
     } catch (parseError) {
@@ -228,6 +276,9 @@ ${analysisText}`;
         restaurantPrice: 35.00,
         saving: 20.00
       };
+      
+      // Cache the fallback result for consistent failure behavior
+      analysisCache[cacheKey] = JSON.parse(JSON.stringify(fallbackMeal));
       
       return fallbackMeal;
     }
@@ -273,22 +324,24 @@ export const processUploadedFoodImage = async (
     if (mealAnalysis.estimatedHomeCookedPrice >= mealAnalysis.restaurantPrice) {
       console.log("Final verification: adjusting prices to ensure positive savings");
       const avgPrice = (mealAnalysis.estimatedHomeCookedPrice + mealAnalysis.restaurantPrice) / 2;
-      mealAnalysis.restaurantPrice = avgPrice * 1.4; // 40% above average
-      mealAnalysis.estimatedHomeCookedPrice = avgPrice * 0.6; // 40% below average
-      mealAnalysis.saving = mealAnalysis.restaurantPrice - mealAnalysis.estimatedHomeCookedPrice;
+      mealAnalysis.restaurantPrice = normalizePrice(avgPrice * 1.4); // 40% above average
+      mealAnalysis.estimatedHomeCookedPrice = normalizePrice(avgPrice * 0.6); // 40% below average
+      mealAnalysis.saving = normalizePrice(mealAnalysis.restaurantPrice - mealAnalysis.estimatedHomeCookedPrice);
     }
     
     // Calculate savings percentage
-    const savingsPercentage = 
-      (mealAnalysis.saving / mealAnalysis.restaurantPrice) * 100;
+    const savingsPercentage = normalizePrice(
+      (mealAnalysis.saving / mealAnalysis.restaurantPrice) * 100,
+      1 // Round to 1 decimal place
+    );
     
-    // Create card display data
+    // Create card display data with consistent decimal places
     const cardData: FoodCardData = {
       title: mealAnalysis.meal,
-      homeCookedPrice: parseFloat(mealAnalysis.estimatedHomeCookedPrice.toFixed(2)),
-      restaurantPrice: parseFloat(mealAnalysis.restaurantPrice.toFixed(2)),
-      savings: parseFloat(mealAnalysis.saving.toFixed(2)),
-      savingsPercentage: parseFloat(savingsPercentage.toFixed(1)),
+      homeCookedPrice: normalizePrice(mealAnalysis.estimatedHomeCookedPrice),
+      restaurantPrice: normalizePrice(mealAnalysis.restaurantPrice),
+      savings: normalizePrice(mealAnalysis.saving),
+      savingsPercentage: savingsPercentage,
       ingredients: mealAnalysis.recipe,
       imageUrl: imageUrl
     };
