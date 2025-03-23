@@ -9,6 +9,8 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
+  Dimensions,
+  SafeAreaView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { FontAwesome } from "@expo/vector-icons";
@@ -29,6 +31,9 @@ const Create = () => {
   const [fontsLoaded] = useFonts({
     ...FontAwesome.font,
   });
+
+  const windowHeight = Dimensions.get("window").height;
+  const windowWidth = Dimensions.get("window").width;
 
   useEffect(() => {
     async function prepare() {
@@ -225,94 +230,115 @@ const Create = () => {
   };
 
   return (
-    <ScrollView className="flex-1 bg-[#F7F9FC]">
-      <View className="pt-5 px-5 pb-2.5 bg-white border-b border-black/5">
-        <Text className="text-2xl font-semibold text-[#333333]">Add Meal</Text>
-      </View>
-
-      {!image ? (
-        <View style={styles.uploadContainer}>
-          <View style={styles.placeholderContainer}>
-            <FontAwesome name="image" size={60} color="#CCCCCC" />
-            <Text style={styles.placeholderText}>
-              Take or upload a photo of your meal
-            </Text>
-          </View>
-
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
-              <FontAwesome name="photo" size={24} color="#FFFFFF" />
-              <Text style={styles.uploadButtonText}>Choose From Gallery</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.uploadButton} onPress={takePhoto}>
-              <FontAwesome name="camera" size={24} color="#FFFFFF" />
-              <Text style={styles.uploadButtonText}>Take Photo</Text>
-            </TouchableOpacity>
-          </View>
+    <View style={{ flex: 1 }}>
+      <ScrollView className="flex-1 bg-[#F7F9FC]">
+        <View className="pt-5 px-5 pb-2.5 bg-white border-b border-black/5">
+          <Text className="text-2xl font-semibold text-[#333333]">
+            Add Meal
+          </Text>
         </View>
-      ) : (
-        <View style={styles.imagePreviewContainer}>
-          <Image source={{ uri: image }} style={styles.imagePreview} />
 
-          <View style={styles.toggleContainer}>
-            <Text style={styles.toggleLabel}>
-              {isHomeCooked ? "Home-cooked Meal" : "Restaurant Meal"}
-            </Text>
-            <Switch
-              trackColor={{ false: "#767577", true: "#c4e8d4" }}
-              thumbColor={isHomeCooked ? "#00AA5B" : "#f4f3f4"}
-              ios_backgroundColor="#3e3e3e"
-              onValueChange={() => setIsHomeCooked((prevState) => !prevState)}
-              value={isHomeCooked}
-            />
+        {!image ? (
+          <View style={styles.uploadContainer}>
+            <View style={styles.placeholderContainer}>
+              <FontAwesome name="image" size={60} color="#CCCCCC" />
+              <Text style={styles.placeholderText}>
+                Take or upload a photo of your meal
+              </Text>
+            </View>
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
+                <FontAwesome name="photo" size={24} color="#FFFFFF" />
+                <Text style={styles.uploadButtonText}>Choose From Gallery</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.uploadButton} onPress={takePhoto}>
+                <FontAwesome name="camera" size={24} color="#FFFFFF" />
+                <Text style={styles.uploadButtonText}>Take Photo</Text>
+              </TouchableOpacity>
+            </View>
           </View>
+        ) : (
+          <View style={styles.imagePreviewContainer}>
+            <Image source={{ uri: image }} style={styles.imagePreview} />
 
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.circleButton}
-              onPress={() => {
-                setImage(null);
-                setFoodCardData(null);
-              }}
-            >
-              <FontAwesome name="trash" size={24} color="#E74C3C" />
-            </TouchableOpacity>
+            <View style={styles.toggleContainer}>
+              <Text style={styles.toggleLabel}>
+                {isHomeCooked ? "Home-cooked Meal" : "Restaurant Meal"}
+              </Text>
+              <Switch
+                trackColor={{ false: "#767577", true: "#c4e8d4" }}
+                thumbColor={isHomeCooked ? "#00AA5B" : "#f4f3f4"}
+                ios_backgroundColor="#767577"
+                onValueChange={() => setIsHomeCooked((prevState) => !prevState)}
+                value={isHomeCooked}
+              />
+            </View>
 
-            {!uploading && !analyzing && !foodCardData && (
+            <View style={styles.buttonRow}>
               <TouchableOpacity
-                style={[styles.circleButton, styles.analyzeButton]}
-                onPress={uploadImage}
+                style={styles.circleButton}
+                onPress={() => {
+                  setImage(null);
+                  setFoodCardData(null);
+                }}
               >
-                <FontAwesome name="check" size={24} color="#FFFFFF" />
+                <FontAwesome name="trash" size={24} color="#E74C3C" />
               </TouchableOpacity>
-            )}
+
+              {!uploading && !analyzing && !foodCardData && (
+                <TouchableOpacity
+                  style={[styles.circleButton, styles.analyzeButton]}
+                  onPress={uploadImage}
+                >
+                  <FontAwesome name="check" size={24} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
+        )}
 
-          {(uploading || analyzing) && (
-            <View className="absolute inset-0 bg-black/30 justify-center items-center z-50 left-0 right-0 top-0 bottom-0 h-full w-full">
-              <View className="bg-white p-5 rounded-2xl shadow w-4/5 items-center justify-center">
-                <ActivityIndicator size="large" color="#00AA5B" />
-                <Text className="mt-3 text-base text-center text-[#666666]">
-                  {uploading
-                    ? "Uploading image..."
-                    : "Analyzing your meal... This might take a minute."}
-                </Text>
-              </View>
-            </View>
-          )}
+        {foodCardData && (
+          <View className="mt-5 px-5">
+            <FoodSavingsCard cardData={foodCardData} />
+            <TouchableOpacity
+              className="bg-white mt-5 p-4 rounded-xl items-center shadow"
+              onPress={resetAll}
+            >
+              <Text className="text-base font-semibold text-[#00AA5B]">
+                Take Another Photo
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
 
-          {foodCardData && (
-            <View style={styles.analysisResultContainer}>
-              <FoodSavingsCard cardData={foodCardData} />
-              <TouchableOpacity style={styles.resetButton} onPress={resetAll}>
-                <Text style={styles.resetButtonText}>Take Another Photo</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+      {(uploading || analyzing) && (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: windowWidth,
+            height: windowHeight,
+            backgroundColor: "rgba(0, 0, 0, 0.3)",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+          }}
+        >
+          <View className="bg-white p-5 rounded-2xl shadow w-4/5 items-center justify-center">
+            <ActivityIndicator size="large" color="#00AA5B" />
+            <Text className="mt-3 text-base text-center text-[#666666]">
+              {uploading
+                ? "Uploading image..."
+                : "Analyzing your meal... This might take a minute."}
+            </Text>
+          </View>
         </View>
       )}
-    </ScrollView>
+    </View>
   );
 };
 
@@ -466,7 +492,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
-    shadowColor: "#000",
+    shadowColor: "#FFFFFF",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
