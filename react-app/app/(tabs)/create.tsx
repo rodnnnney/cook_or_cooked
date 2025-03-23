@@ -111,7 +111,24 @@ const Create = () => {
         // Start analyzing the image
         setUploading(false);
         setAnalyzing(true);
-        console.log("Attempting to analyze image with OpenAI GPT-4 Vision...");
+        console.log("Attempting to analyze image with OpenAI GPT-4o...");
+        
+        // Verify the URL is valid and accessible
+        console.log("Image URL for analysis:", publicUrl);
+        
+        try {
+          // Test that the image URL is accessible
+          const response = await fetch(publicUrl, { method: 'HEAD' });
+          if (!response.ok) {
+            console.error("Image URL not accessible:", publicUrl, "Status:", response.status);
+            throw new Error(`Image URL not accessible: ${response.statusText}`);
+          }
+          console.log("Image URL is accessible, status:", response.status);
+        } catch (fetchError) {
+          console.error("Error verifying image URL:", fetchError);
+          // Continue anyway, as the error might be due to CORS, but OpenAI might still access it
+          console.log("Continuing with analysis despite URL verification error");
+        }
         
         // Use our processUploadedFoodImage function to get structured card data
         const cardData = await processUploadedFoodImage(publicUrl);

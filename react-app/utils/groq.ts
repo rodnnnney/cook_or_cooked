@@ -44,23 +44,34 @@ export const analyzeImage = async (
   const startTime = performance.now();
   console.log("Starting OpenAI image analysis for:", imagePath);
 
+  // Validate the image URL is properly formed
+  if (!imagePath || (!imagePath.startsWith('http://') && !imagePath.startsWith('https://'))) {
+    console.error("Invalid image URL:", imagePath);
+    throw new Error("Invalid image URL. URL must start with http:// or https://");
+  }
+
   try {
     // STEP 1: Analyze the image using GPT-4 Vision
     const imageCallStartTime = performance.now();
     
-    const image_prompt = `Analyze this food image and determine the following:
-1. The name of the meal
-2. A list of ingredients used in the meal (with estimated amounts in grams)
-3. The estimated price per gram of each ingredient (in Canadian dollars)
-4. The estimated cost if cooked at home (per serving)
-5. The estimated price if bought at a restaurant
-Base all prices on 2025 rates in downtown Toronto, Canada.`;
+    const image_prompt = `You are a food analysis expert. Carefully examine this food image and provide a detailed analysis:
+
+1. Identify the specific dish/meal shown in the image with as much precision as possible
+2. List all visible ingredients with estimated quantities in grams
+3. Estimate the price per gram for each ingredient (in Canadian dollars)
+4. Calculate the total cost to prepare this dish at home (per serving)
+5. Estimate what this dish would cost in a restaurant
+
+Use your expertise to analyze only what you can see in the image. Be precise and accurate with the information. 
+Base all price estimates on 2025 rates in downtown Toronto, Canada.
+If any information cannot be determined from the image, make educated estimates based on similar dishes.`;
 
     // First API call - analyze the image
     let imageResponse;
     try {
+      console.log("Sending image URL to OpenAI:", imagePath);
       imageResponse = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [
           {
             role: "user",
@@ -103,7 +114,7 @@ ${analysisText}`;
     let formattingResponse;
     try {
       formattingResponse = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -132,8 +143,30 @@ ${analysisText}`;
 
     try {
       // Parse the JSON response
-      const mealInfo = JSON.parse(jsonResponse) as MealAnalysis;
-      console.log("Successfully parsed JSON response");
+      console.log("Attempting to parse JSON response");
+      
+      let mealInfo: MealAnalysis;
+      try {
+        mealInfo = JSON.parse(jsonResponse) as MealAnalysis;
+        console.log("Successfully parsed JSON response");
+      } catch (initialParseError) {
+        console.error("Initial JSON parse error:", initialParseError);
+        
+        // Try to extract JSON from the text if it wasn't pure JSON
+        const jsonMatch = jsonResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          console.log("Extracted JSON object from response text");
+          try {
+            mealInfo = JSON.parse(jsonMatch[0]) as MealAnalysis;
+            console.log("Successfully parsed extracted JSON");
+          } catch (extractedParseError) {
+            console.error("Failed to parse extracted JSON:", extractedParseError);
+            throw extractedParseError;
+          }
+        } else {
+          throw initialParseError;
+        }
+      }
 
       // Check if we have all required fields
       if (!mealInfo.meal || !mealInfo.recipe || !mealInfo.estimatedHomeCookedPrice || !mealInfo.restaurantPrice) {
