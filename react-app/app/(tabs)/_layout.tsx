@@ -9,6 +9,19 @@ const _Layout = () => {
       screenOptions={{
         tabBarStyle: {
           height: 60,
+          backgroundColor: "#0D0D0D",
+          borderTopWidth: 0,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 3,
+          elevation: 10,
+        },
+        tabBarActiveTintColor: "#19E08B",
+        tabBarInactiveTintColor: "#777777",
+        tabBarLabelStyle: {
+          fontSize: 12,
+          marginBottom: 6,
         },
       }}
     >
@@ -40,7 +53,7 @@ const _Layout = () => {
           tabBarIcon: () => (
             <View
               style={{
-                backgroundColor: "#007AFF",
+                backgroundColor: "#19E08B",
                 width: 64,
                 height: 64,
                 borderRadius: 32,
@@ -48,13 +61,13 @@ const _Layout = () => {
                 alignItems: "center",
                 marginBottom: 24,
                 shadowColor: "#000",
-                shadowOpacity: 0.2,
-                shadowOffset: { width: 0, height: 2 },
-                shadowRadius: 4,
-                elevation: 4,
+                shadowOpacity: 0.3,
+                shadowOffset: { width: 0, height: 4 },
+                shadowRadius: 6,
+                elevation: 8,
               }}
             >
-              <FontAwesome name="plus" size={24} color="white" />
+              <FontAwesome name="plus" size={24} color="#0D0D0D" />
             </View>
           ),
         }}

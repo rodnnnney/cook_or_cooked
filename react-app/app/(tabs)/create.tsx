@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  StyleSheet,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { FontAwesome } from "@expo/vector-icons";
@@ -212,71 +213,72 @@ const Create = () => {
   };
 
   return (
-    <ScrollView className="flex-1 bg-white">
-      <View className="p-5">
-        <Text className="text-2xl font-bold mb-5 text-center">
+    <ScrollView style={styles.container}>
+      <View style={styles.contentWrapper}>
+        <Text style={styles.headerText}>
           Food Cost Analyzer
         </Text>
 
         {!foodCardData && (
           <>
-            <View className="h-[300px] w-full rounded-xl overflow-hidden bg-gray-100 mb-5 justify-center items-center border border-gray-200">
+            <View style={styles.imageContainer}>
               {image ? (
-                <Image source={{ uri: image }} className="w-full h-full" />
+                <Image source={{ uri: image }} style={styles.previewImage} />
               ) : (
-                <View className="items-center justify-center">
-                  <FontAwesome name="image" size={80} color="#cccccc" />
-                  <Text className="mt-2 text-gray-500 text-base">
+                <View style={styles.placeholderContainer}>
+                  <FontAwesome name="image" size={80} color="#444444" />
+                  <Text style={styles.placeholderText}>
                     No image selected
                   </Text>
                 </View>
               )}
             </View>
 
-            <View className="flex-row justify-around mb-5">
+            <View style={styles.buttonRow}>
               <TouchableOpacity
-                className="bg-blue-500 py-3 px-6 rounded-lg flex-row items-center justify-center"
+                style={styles.secondaryButton}
                 onPress={pickImage}
               >
-                <FontAwesome name="photo" size={20} color="white" />
-                <Text className="text-white font-bold ml-2">Gallery</Text>
+                <FontAwesome name="photo" size={20} color="#FFFFFF" />
+                <Text style={styles.buttonText}>Gallery</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                className="bg-blue-500 py-3 px-6 rounded-lg flex-row items-center justify-center"
+                style={styles.secondaryButton}
                 onPress={takePhoto}
               >
-                <FontAwesome name="camera" size={20} color="white" />
-                <Text className="text-white font-bold ml-2">Camera</Text>
+                <FontAwesome name="camera" size={20} color="#FFFFFF" />
+                <Text style={styles.buttonText}>Camera</Text>
               </TouchableOpacity>
             </View>
 
             {image && (
               <TouchableOpacity
-                className={`bg-green-500 py-4 rounded-lg flex-row items-center justify-center ${
-                  uploading || analyzing ? "bg-green-300" : ""
-                }`}
+                style={[
+                  styles.primaryButton,
+                  (uploading || analyzing) && styles.disabledButton
+                ]}
                 onPress={uploadImage}
                 disabled={uploading || analyzing}
               >
                 {uploading ? (
                   <>
                     <ActivityIndicator color="white" />
-                    <Text className="text-white font-bold ml-2">
+                    <Text style={styles.buttonText}>
                       Uploading...
                     </Text>
                   </>
                 ) : analyzing ? (
                   <>
                     <ActivityIndicator color="white" />
-                    <Text className="text-white font-bold ml-2">
+                    <Text style={styles.buttonText}>
                       Analyzing food image...
                     </Text>
                   </>
                 ) : (
                   <>
                     <FontAwesome name="cloud-upload" size={20} color="white" />
-                    <Text className="text-white font-bold ml-2">
+                    <Text style={styles.buttonText}>
                       Analyze Food
                     </Text>
                   </>
@@ -287,15 +289,15 @@ const Create = () => {
         )}
 
         {foodCardData && (
-          <View className="mb-5">
+          <View style={styles.resultContainer}>
             <FoodSavingsCard cardData={foodCardData} />
 
             <TouchableOpacity
-              className="bg-blue-500 py-4 rounded-lg flex-row items-center justify-center mt-5"
+              style={styles.secondaryButton}
               onPress={resetAll}
             >
               <FontAwesome name="refresh" size={20} color="white" />
-              <Text className="text-white font-bold ml-2">
+              <Text style={styles.buttonText}>
                 Analyze Another Image
               </Text>
             </TouchableOpacity>
@@ -305,5 +307,80 @@ const Create = () => {
     </ScrollView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1, 
+    backgroundColor: "#0D0D0D",
+  },
+  contentWrapper: {
+    padding: 20,
+  },
+  headerText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+    color: "#FFFFFF",
+  },
+  imageContainer: {
+    height: 300,
+    width: "100%",
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#171717",
+    marginBottom: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#232323",
+  },
+  previewImage: {
+    width: "100%",
+    height: "100%",
+  },
+  placeholderContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  placeholderText: {
+    marginTop: 8,
+    color: "#777777",
+    fontSize: 16,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 20,
+  },
+  primaryButton: {
+    backgroundColor: "#19E08B",
+    paddingVertical: 14,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  secondaryButton: {
+    backgroundColor: "#369BFF",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  disabledButton: {
+    backgroundColor: "rgba(25, 224, 139, 0.5)",
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontWeight: "bold",
+    marginLeft: 8,
+  },
+  resultContainer: {
+    marginBottom: 20,
+  },
+});
 
 export default Create;
