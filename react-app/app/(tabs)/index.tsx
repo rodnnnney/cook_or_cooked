@@ -1,6 +1,13 @@
 import supabase from "@/utils/supabase";
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, Dimensions, Text, ScrollView, TouchableOpacity } from "react-native";
+import {
+  View,
+  StyleSheet,
+  Dimensions,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
 import {
   LineChart,
   BarChart,
@@ -22,14 +29,15 @@ type Meal = {
 };
 
 // Define time period options
-type TimePeriod = 'week' | 'month' | 'year' | 'all';
+type TimePeriod = "week" | "month" | "year" | "all";
 
 const ChartKitDemo = () => {
   // State for storing meal data
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTimePeriod, setSelectedTimePeriod] = useState<TimePeriod>('month');
+  const [selectedTimePeriod, setSelectedTimePeriod] =
+    useState<TimePeriod>("month");
   const [selectedDataPoint, setSelectedDataPoint] = useState<{
     value: number;
     label: string;
@@ -52,7 +60,7 @@ const ChartKitDemo = () => {
         if (error) throw error;
 
         // Transform data to include createdAt as JavaScript date
-        const transformedData = (data || []).map(item => ({
+        const transformedData = (data || []).map((item) => ({
           ...item,
           createdAt: item.created_at,
         }));
@@ -74,40 +82,40 @@ const ChartKitDemo = () => {
   // Filter meals based on selected time period
   const getFilteredMeals = () => {
     if (!meals.length) return [];
-    
+
     const now = new Date();
     let cutoffDate = new Date();
-    
+
     switch (selectedTimePeriod) {
-      case 'week':
+      case "week":
         cutoffDate.setDate(now.getDate() - 7);
         break;
-      case 'month':
+      case "month":
         cutoffDate.setMonth(now.getMonth() - 1);
         break;
-      case 'year':
+      case "year":
         cutoffDate.setFullYear(now.getFullYear() - 1);
         break;
-      case 'all':
+      case "all":
       default:
         return meals;
     }
-    
-    return meals.filter(meal => {
+
+    return meals.filter((meal) => {
       if (!meal.createdAt) return true;
       const mealDate = new Date(meal.createdAt);
       return mealDate >= cutoffDate;
     });
   };
-  
+
   // Handle chart touch events
   const handleDataPointClick = (data: any) => {
     if (data && data.index !== undefined) {
       setSelectedDataPoint({
         value: data.value,
-        label: data.dataset?.data ? data.dataset.data[data.index] : 'Unknown',
+        label: data.dataset?.data ? data.dataset.data[data.index] : "Unknown",
         index: data.index,
-        dataset: data.datasetIndex
+        dataset: data.datasetIndex,
       });
     } else {
       setSelectedDataPoint(null);
@@ -117,70 +125,94 @@ const ChartKitDemo = () => {
   // Group data by time periods for time-series display
   const aggregateDataByPeriod = () => {
     const filteredMeals = getFilteredMeals();
-    
+
     if (filteredMeals.length === 0) return null;
-    
+
     // Group meals by period (can be day, week, or month depending on the selected period)
-    let groupedData: {[key: string]: Meal[]} = {};
+    let groupedData: { [key: string]: Meal[] } = {};
     let dateFormat: string;
-    
+
     switch (selectedTimePeriod) {
-      case 'week':
-        dateFormat = 'MM/DD'; // Day format
-        filteredMeals.forEach(meal => {
+      case "week":
+        dateFormat = "MM/DD"; // Day format
+        filteredMeals.forEach((meal) => {
           if (!meal.createdAt) return;
           const date = new Date(meal.createdAt);
-          const key = `${date.getMonth()+1}/${date.getDate()}`;
+          const key = `${date.getMonth() + 1}/${date.getDate()}`;
           groupedData[key] = [...(groupedData[key] || []), meal];
         });
         break;
-      case 'month':
-        dateFormat = 'Week W'; // Week format
-        filteredMeals.forEach(meal => {
+      case "month":
+        dateFormat = "Week W"; // Week format
+        filteredMeals.forEach((meal) => {
           if (!meal.createdAt) return;
           const date = new Date(meal.createdAt);
           const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
-          const weekNumber = Math.ceil(((date.getTime() - firstDayOfYear.getTime()) / 86400000 + firstDayOfYear.getDay() + 1) / 7);
+          const weekNumber = Math.ceil(
+            ((date.getTime() - firstDayOfYear.getTime()) / 86400000 +
+              firstDayOfYear.getDay() +
+              1) /
+              7
+          );
           const key = `Week ${weekNumber}`;
           groupedData[key] = [...(groupedData[key] || []), meal];
         });
         break;
-      case 'year':
-      case 'all':
-        dateFormat = 'MMM'; // Month format
-        filteredMeals.forEach(meal => {
+      case "year":
+      case "all":
+        dateFormat = "MMM"; // Month format
+        filteredMeals.forEach((meal) => {
           if (!meal.createdAt) return;
           const date = new Date(meal.createdAt);
-          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const monthNames = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ];
           const key = monthNames[date.getMonth()];
           groupedData[key] = [...(groupedData[key] || []), meal];
         });
         break;
     }
-    
+
     // Calculate averages and totals for each period
     const labels = Object.keys(groupedData);
-    const restaurantData = labels.map(label => {
+    const restaurantData = labels.map((label) => {
       const periodMeals = groupedData[label];
-      const totalCost = periodMeals.reduce((sum, meal) => sum + meal.resturantPrice, 0);
+      const totalCost = periodMeals.reduce(
+        (sum, meal) => sum + meal.resturantPrice,
+        0
+      );
       return totalCost;
     });
-    
-    const homeCookedData = labels.map(label => {
+
+    const homeCookedData = labels.map((label) => {
       const periodMeals = groupedData[label];
-      const totalCost = periodMeals.reduce((sum, meal) => sum + meal.estimatedHomeCookedPrice, 0);
+      const totalCost = periodMeals.reduce(
+        (sum, meal) => sum + meal.estimatedHomeCookedPrice,
+        0
+      );
       return totalCost;
     });
-    
+
     const savingsData = labels.map((label, index) => {
       return restaurantData[index] - homeCookedData[index];
     });
-    
+
     return {
       labels,
       restaurantData,
       homeCookedData,
-      savingsData
+      savingsData,
     };
   };
 
@@ -188,9 +220,9 @@ const ChartKitDemo = () => {
   const preparePriceComparisonData = () => {
     const timeSeriesData = aggregateDataByPeriod();
     if (!timeSeriesData) return null;
-    
+
     return {
-      labels: timeSeriesData.labels, 
+      labels: timeSeriesData.labels,
       datasets: [
         {
           data: timeSeriesData.restaurantData,
@@ -203,15 +235,14 @@ const ChartKitDemo = () => {
           strokeWidth: 2,
         },
       ],
-      legend: ["Restaurant Price", "Home Cooked Price"],
     };
   };
-  
+
   // Prepare data for the savings line chart
   const prepareSavingsTimeSeriesData = () => {
     const timeSeriesData = aggregateDataByPeriod();
     if (!timeSeriesData) return null;
-    
+
     return {
       labels: timeSeriesData.labels,
       datasets: [
@@ -244,7 +275,7 @@ const ChartKitDemo = () => {
       {
         name: "Home Cost",
         population: totalHomeCookedCost,
-        color: "#A0A5B1",
+        color: "#EB5757",
         legendFontColor: "#555555",
         legendFontSize: 12,
       },
@@ -319,55 +350,87 @@ const ChartKitDemo = () => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Meal Savings</Text>
       </View>
-      
+
       <View style={styles.filterContainer}>
         <Text style={styles.filterLabel}>Time Period</Text>
         <View style={styles.buttonGroup}>
-          <TouchableOpacity 
-            style={[styles.filterButton, selectedTimePeriod === 'week' && styles.activeButton]} 
-            onPress={() => setSelectedTimePeriod('week')}
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              selectedTimePeriod === "week" && styles.activeButton,
+            ]}
+            onPress={() => setSelectedTimePeriod("week")}
           >
-            <Text style={[styles.filterButtonText, selectedTimePeriod === 'week' && styles.activeButtonText]}>
+            <Text
+              style={[
+                styles.filterButtonText,
+                selectedTimePeriod === "week" && styles.activeButtonText,
+              ]}
+            >
               Week
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.filterButton, selectedTimePeriod === 'month' && styles.activeButton]} 
-            onPress={() => setSelectedTimePeriod('month')}
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              selectedTimePeriod === "month" && styles.activeButton,
+            ]}
+            onPress={() => setSelectedTimePeriod("month")}
           >
-            <Text style={[styles.filterButtonText, selectedTimePeriod === 'month' && styles.activeButtonText]}>
+            <Text
+              style={[
+                styles.filterButtonText,
+                selectedTimePeriod === "month" && styles.activeButtonText,
+              ]}
+            >
               Month
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.filterButton, selectedTimePeriod === 'year' && styles.activeButton]} 
-            onPress={() => setSelectedTimePeriod('year')}
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              selectedTimePeriod === "year" && styles.activeButton,
+            ]}
+            onPress={() => setSelectedTimePeriod("year")}
           >
-            <Text style={[styles.filterButtonText, selectedTimePeriod === 'year' && styles.activeButtonText]}>
+            <Text
+              style={[
+                styles.filterButtonText,
+                selectedTimePeriod === "year" && styles.activeButtonText,
+              ]}
+            >
               Year
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.filterButton, selectedTimePeriod === 'all' && styles.activeButton]} 
-            onPress={() => setSelectedTimePeriod('all')}
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              selectedTimePeriod === "all" && styles.activeButton,
+            ]}
+            onPress={() => setSelectedTimePeriod("all")}
           >
-            <Text style={[styles.filterButtonText, selectedTimePeriod === 'all' && styles.activeButtonText]}>
+            <Text
+              style={[
+                styles.filterButtonText,
+                selectedTimePeriod === "all" && styles.activeButtonText,
+              ]}
+            >
               All
             </Text>
           </TouchableOpacity>
         </View>
       </View>
-      
+
       {/* Overall savings summary */}
       {savingsData && (
         <View style={styles.summaryContainer}>
           <Text style={styles.summaryValue}>
-            ${(savingsData[1].population).toFixed(0)}
+            ${savingsData[1].population.toFixed(0)}
           </Text>
           <Text style={styles.summaryLabel}>Total Savings</Text>
         </View>
       )}
-      
+
       {/* Savings over time chart */}
       {savingsTimeSeriesData && (
         <View style={styles.chartContainer}>
@@ -406,7 +469,6 @@ const ChartKitDemo = () => {
         </View>
       )}
 
-      {/* Restaurant vs Home cooking comparison chart */}
       {priceComparisonData && (
         <View style={styles.chartContainer}>
           <Text style={styles.title}>Restaurant vs Home Cooking</Text>
@@ -423,7 +485,7 @@ const ChartKitDemo = () => {
                     ...priceComparisonData.datasets[1],
                     color: (opacity = 1) => `rgba(0, 170, 91, ${opacity})`, // Wealthsimple green for home
                   },
-                ]
+                ],
               }}
               width={screenWidth - 50} // Adjusted width to fit inside container
               height={220}
@@ -442,17 +504,7 @@ const ChartKitDemo = () => {
               onDataPointClick={handleDataPointClick}
             />
           </View>
-          <View style={styles.legendContainer}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: 'rgba(235, 87, 87, 1)' }]} />
-              <Text style={styles.legendText}>Restaurant</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: 'rgba(0, 170, 91, 1)' }]} />
-              <Text style={styles.legendText}>Home Cooked</Text>
-            </View>
-          </View>
-          
+
           {selectedDataPoint && (
             <View style={styles.dataPointInfo}>
               <Text style={styles.dataPointText}>
@@ -462,14 +514,13 @@ const ChartKitDemo = () => {
                 ${selectedDataPoint.value.toFixed(2)}
               </Text>
               <Text style={styles.dataPointSubtext}>
-                {selectedDataPoint.dataset === 0 ? 'Restaurant' : 'Home Cooked'}
+                {selectedDataPoint.dataset === 0 ? "Restaurant" : "Home Cooked"}
               </Text>
             </View>
           )}
         </View>
       )}
 
-      {/* Overall savings pie chart */}
       {savingsData && (
         <View style={styles.chartContainer}>
           <Text style={styles.title}>Cost Breakdown</Text>
@@ -478,7 +529,7 @@ const ChartKitDemo = () => {
               data={[
                 {
                   ...savingsData[0],
-                  color: "#A0A5B1", // Light grey for home cost
+                  color: "#EB5757", // Changed to red for home cost
                   legendFontColor: "#555555",
                 },
                 {
@@ -534,10 +585,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    overflow: 'hidden', // Ensures content doesn't overflow
+    overflow: "hidden", // Ensures content doesn't overflow
   },
   chartWrapper: {
-    alignItems: 'center', // Center the chart
+    alignItems: "center", // Center the chart
     marginHorizontal: -5, // Adjust margins to prevent overflow
   },
   summaryContainer: {
@@ -546,7 +597,7 @@ const styles = StyleSheet.create({
     padding: 24,
     marginHorizontal: 20,
     marginVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -587,14 +638,14 @@ const styles = StyleSheet.create({
     color: "#E74C3C",
   },
   legendContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 16,
     marginBottom: 8,
   },
   legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginHorizontal: 12,
   },
   legendDot: {
@@ -611,7 +662,7 @@ const styles = StyleSheet.create({
     marginVertical: 12,
     padding: 20,
     marginHorizontal: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -621,56 +672,56 @@ const styles = StyleSheet.create({
   },
   filterLabel: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 16,
-    color: '#333333',
+    color: "#333333",
   },
   buttonGroup: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   filterButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 20,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: "#F0F0F0",
     minWidth: 70,
-    alignItems: 'center',
+    alignItems: "center",
   },
   activeButton: {
-    backgroundColor: '#00AA5B', // Wealthsimple green
+    backgroundColor: "#00AA5B", // Wealthsimple green
   },
   filterButtonText: {
     fontSize: 14,
-    color: '#666666',
-    fontWeight: '500',
+    color: "#666666",
+    fontWeight: "500",
   },
   activeButtonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+    color: "#FFFFFF",
+    fontWeight: "bold",
   },
   dataPointInfo: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     padding: 16,
     borderRadius: 12,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: 'rgba(0, 170, 91, 0.3)',
-    alignItems: 'center',
+    borderColor: "rgba(0, 170, 91, 0.3)",
+    alignItems: "center",
   },
   dataPointText: {
     fontSize: 14,
-    color: '#666666',
+    color: "#666666",
   },
   dataPointValue: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#00AA5B',
+    fontWeight: "700",
+    color: "#00AA5B",
     marginVertical: 6,
   },
   dataPointSubtext: {
     fontSize: 13,
-    color: '#666666',
+    color: "#666666",
   },
 });
 

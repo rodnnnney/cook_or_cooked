@@ -12,13 +12,13 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-interface RecipeIngredient {
+export interface RecipeIngredient {
   type: string;
   amount: number;
   pricePerGram?: number;
 }
 
-interface Dish {
+export interface Dish {
   id: number;
   meal: string;
   image: string;
@@ -54,7 +54,8 @@ const Profile = () => {
 
       // Calculate total savings
       const total = (data || []).reduce(
-        (acc, dish) => acc + (dish.resturantPrice - dish.estimatedHomeCookedPrice),
+        (acc, dish) =>
+          acc + (dish.resturantPrice - dish.estimatedHomeCookedPrice),
         0
       );
       setTotalSaved(total);
@@ -194,7 +195,10 @@ const Profile = () => {
                   <View style={styles.priceItem}>
                     <Text style={styles.priceLabel}>Savings</Text>
                     <Text style={styles.savingsPrice}>
-                      ${(dish.resturantPrice - dish.estimatedHomeCookedPrice).toFixed(2)}
+                      $
+                      {(
+                        dish.resturantPrice - dish.estimatedHomeCookedPrice
+                      ).toFixed(2)}
                     </Text>
                   </View>
                 </View>
@@ -207,7 +211,9 @@ const Profile = () => {
                         renderIngredient(ingredient, index)
                       )
                     ) : (
-                      <Text style={styles.ingredientText}>No ingredients information</Text>
+                      <Text style={styles.ingredientText}>
+                        No ingredients information
+                      </Text>
                     )}
                   </View>
                 )}
