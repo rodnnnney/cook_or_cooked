@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Text,
   View,
@@ -75,10 +75,8 @@ const Create = () => {
       });
       console.log("File content length:", base64.length);
 
-      // Convert base64 to ArrayBuffer using the decode function from base64-arraybuffer
       const arrayBuffer = decode(base64);
 
-      // Upload to Supabase using ArrayBuffer
       const { data, error } = await supabase.storage
         .from("food")
         .upload(`public/${fileName}`, arrayBuffer, {
@@ -89,7 +87,6 @@ const Create = () => {
       console.log("Upload response:", { data, error });
       if (error) throw error;
 
-      // Get the public URL
       const publicUrl = supabase.storage
         .from("food")
         .getPublicUrl(`public/${fileName}`).data.publicUrl;
