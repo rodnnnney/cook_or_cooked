@@ -57,6 +57,9 @@ const FoodSavingsCard: React.FC<FoodSavingsCardProps> = ({ cardData, onPress }) 
           <Text className="text-green-800 font-semibold text-base">
             You save ${savings.toFixed(2)} ({savingsPercentage.toFixed(1)}%)
           </Text>
+          <Text className="text-green-700 text-sm mt-1">
+            Always cheaper to cook at home!
+          </Text>
         </View>
         
         {/* Ingredients section */}

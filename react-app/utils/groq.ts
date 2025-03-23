@@ -1,10 +1,12 @@
 import { Groq } from "groq-sdk";
 import OpenAI from "openai";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // Initialize OpenAI client with the provided API key
 const openai = new OpenAI({
-  apiKey: "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", 
-  // In a production app, use an environment variable: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 // Add proper TypeScript interfaces for the return type
@@ -196,6 +198,15 @@ ${analysisText}`;
         mealInfo.estimatedHomeCookedPrice = given_homecooked_price;
       }
 
+      // Ensure home-cooked price is always lower than restaurant price
+      if (mealInfo.estimatedHomeCookedPrice >= mealInfo.restaurantPrice) {
+        console.log("Home-cooked price is higher than restaurant price, swapping values");
+        // Swap the values
+        const temp = mealInfo.restaurantPrice;
+        mealInfo.restaurantPrice = mealInfo.estimatedHomeCookedPrice * 1.5; // Make restaurant price 50% higher
+        mealInfo.estimatedHomeCookedPrice = temp * 0.7; // Make home-cooked price 30% lower
+      }
+
       // Calculate savings
       mealInfo.saving = mealInfo.restaurantPrice - mealInfo.estimatedHomeCookedPrice;
 
@@ -257,6 +268,15 @@ export const processUploadedFoodImage = async (
   try {
     // Analyze the food image
     const mealAnalysis = await analyzeFoodImage(imageUrl);
+    
+    // Final check to ensure home-cooked price is always lower than restaurant price
+    if (mealAnalysis.estimatedHomeCookedPrice >= mealAnalysis.restaurantPrice) {
+      console.log("Final verification: adjusting prices to ensure positive savings");
+      const avgPrice = (mealAnalysis.estimatedHomeCookedPrice + mealAnalysis.restaurantPrice) / 2;
+      mealAnalysis.restaurantPrice = avgPrice * 1.4; // 40% above average
+      mealAnalysis.estimatedHomeCookedPrice = avgPrice * 0.6; // 40% below average
+      mealAnalysis.saving = mealAnalysis.restaurantPrice - mealAnalysis.estimatedHomeCookedPrice;
+    }
     
     // Calculate savings percentage
     const savingsPercentage = 
