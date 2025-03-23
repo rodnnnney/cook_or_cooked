@@ -212,7 +212,19 @@ const ChartKitDemo = () => {
     });
 
     const savingsData = labels.map((label, index) => {
-      return restaurantData[index] - homeCookedData[index];
+      const periodMeals = groupedData[label];
+      // Calculate actual savings based on meal choice (home cooked vs restaurant)
+      const actualSavings = periodMeals.reduce((totalSavings, meal) => {
+        if (meal.homeCooked) {
+          // If meal was home cooked, we saved money
+          return totalSavings + (meal.resturantPrice - meal.estimatedHomeCookedPrice);
+        } else {
+          // If meal was at restaurant, we didn't save this potential amount
+          return totalSavings - (meal.resturantPrice - meal.estimatedHomeCookedPrice);
+        }
+      }, 0);
+      
+      return actualSavings;
     });
 
     return {
@@ -267,7 +279,7 @@ const ChartKitDemo = () => {
   const prepareSavingsComparisonData = () => {
     if (meals.length === 0) return null;
 
-    // Calculate savings percentages for pie chart
+    // Calculate total costs
     const totalRestaurantCost = meals.reduce(
       (sum, meal) => sum + meal.resturantPrice,
       0
@@ -276,20 +288,44 @@ const ChartKitDemo = () => {
       (sum, meal) => sum + meal.estimatedHomeCookedPrice,
       0
     );
-    const savings = totalRestaurantCost - totalHomeCookedCost;
-
+    
+    // Calculate actual savings based on choices made
+    const actualSavings = meals.reduce((totalSavings, meal) => {
+      if (meal.homeCooked) {
+        // If meal was home cooked, we saved money
+        return totalSavings + (meal.resturantPrice - meal.estimatedHomeCookedPrice);
+      } else {
+        // If meal was at restaurant, we didn't save this potential amount (this is negative)
+        return totalSavings - (meal.resturantPrice - meal.estimatedHomeCookedPrice);
+      }
+    }, 0);
+    
+    // Calculate potential savings (if all meals were home cooked)
+    const potentialSavings = totalRestaurantCost - totalHomeCookedCost;
+    
+    // For the pie chart, we want to show how much was actually saved vs potential savings lost
+    const savedAmount = Math.max(0, actualSavings); // Actual savings (positive value only)
+    const lostSavings = Math.max(0, potentialSavings - savedAmount); // Potential savings not realized
+    
     return [
       {
         name: "Home Cost",
         population: totalHomeCookedCost,
-        color: "#EB5757",
+        color: "#A0A5B1", // Gray for home cost
         legendFontColor: "#555555",
         legendFontSize: 12,
       },
       {
-        name: "Savings",
-        population: savings,
-        color: "#00AA5B",
+        name: "Saved",
+        population: savedAmount,
+        color: "#00AA5B", // Green for actual savings
+        legendFontColor: "#555555",
+        legendFontSize: 12,
+      },
+      {
+        name: "Lost Potential Savings",
+        population: lostSavings,
+        color: "#EB5757", // Red for lost savings
         legendFontColor: "#555555",
         legendFontSize: 12,
       },
@@ -350,6 +386,13 @@ const ChartKitDemo = () => {
   const priceComparisonData = preparePriceComparisonData();
   const savingsData = prepareSavingsComparisonData();
   const savingsTimeSeriesData = prepareSavingsTimeSeriesData();
+
+  const calculateTotalActualSavings = () => {
+    const timeSeriesData = aggregateDataByPeriod();
+    if (!timeSeriesData) return 0;
+
+    return timeSeriesData.savingsData.reduce((total, savings) => total + savings, 0);
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -432,9 +475,9 @@ const ChartKitDemo = () => {
       {savingsData && (
         <View style={styles.summaryContainer}>
           <Text style={styles.summaryValue}>
-            ${savingsData[1].population.toFixed(0)}
+            ${calculateTotalActualSavings().toFixed(0)}
           </Text>
-          <Text style={styles.summaryLabel}>Total Savings</Text>
+          <Text style={styles.summaryLabel}>Actual Savings</Text>
         </View>
       )}
 
@@ -552,18 +595,7 @@ const ChartKitDemo = () => {
           <Text style={styles.title}>Cost Breakdown</Text>
           <View style={styles.chartWrapper}>
             <PieChart
-              data={[
-                {
-                  ...savingsData[0],
-                  color: "#EB5757",
-                  legendFontColor: "#555555",
-                },
-                {
-                  ...savingsData[1],
-                  color: "#00AA5B",
-                  legendFontColor: "#555555",
-                },
-              ]}
+              data={savingsData}
               width={screenWidth - 50}
               height={220}
               chartConfig={chartConfig}
@@ -574,6 +606,20 @@ const ChartKitDemo = () => {
               style={styles.chart}
               hasLegend={true}
             />
+          </View>
+          <View style={styles.legendContainer}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#A0A5B1' }]} />
+              <Text style={styles.legendText}>Home Cost</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#00AA5B' }]} />
+              <Text style={styles.legendText}>Saved</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#EB5757' }]} />
+              <Text style={styles.legendText}>Lost Savings</Text>
+            </View>
           </View>
         </View>
       )}

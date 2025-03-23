@@ -71,7 +71,7 @@ const FoodSavingsCard: React.FC<FoodSavingsCardProps> = ({ cardData, onPress }) 
           <FontAwesome 
             name={showIngredients ? "chevron-up" : "chevron-down"} 
             size={16} 
-            color="#AAAAAA" 
+            color="#666666" 
           />
         </TouchableOpacity>
         
@@ -99,22 +99,20 @@ const FoodSavingsCard: React.FC<FoodSavingsCardProps> = ({ cardData, onPress }) 
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#232323',
   },
   image: {
     width: '100%',
     height: 200,
-    backgroundColor: '#232323',
+    backgroundColor: '#F0F0F0',
   },
   contentContainer: {
     padding: 16,
@@ -123,7 +121,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     marginBottom: 16,
-    color: '#FFFFFF',
+    color: '#333333',
   },
   priceComparisonContainer: {
     flexDirection: 'row',
@@ -135,7 +133,7 @@ const styles = StyleSheet.create({
   },
   priceLabel: {
     fontSize: 14,
-    color: '#999999',
+    color: '#666666',
     marginBottom: 6,
   },
   restaurantPrice: {
@@ -146,10 +144,10 @@ const styles = StyleSheet.create({
   homeCookedPrice: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#19E08B', // Wealthsimple green for home cooked
+    color: '#00AA5B', // Wealthsimple green for home cooked
   },
   savingsContainer: {
-    backgroundColor: 'rgba(25, 224, 139, 0.15)',
+    backgroundColor: 'rgba(0, 170, 91, 0.1)',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
@@ -159,11 +157,11 @@ const styles = StyleSheet.create({
   savingsText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#19E08B',
+    color: '#00AA5B',
   },
   savingsSubtext: {
     fontSize: 14,
-    color: '#19E08B',
+    color: '#00AA5B',
     marginTop: 4,
     opacity: 0.8,
   },
@@ -172,18 +170,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
     paddingTop: 12,
   },
   ingredientsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#CCCCCC',
+    color: '#333333',
   },
   ingredientsList: {
     marginTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
     paddingTop: 8,
   },
   ingredientItem: {
@@ -191,13 +189,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   ingredientName: {
-    color: '#CCCCCC',
+    color: '#333333',
   },
   ingredientPrice: {
-    color: '#999999',
+    color: '#666666',
   },
 });
 
