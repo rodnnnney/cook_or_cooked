@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Text,
   View,
@@ -8,24 +8,44 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
+  Switch,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { FontAwesome } from "@expo/vector-icons";
 import supabase from "@/utils/supabase";
-import {
-  analyzeImage,
-  processUploadedFoodImage,
-  FoodCardData,
-} from "@/utils/groq";
+import { FoodCardData, processUploadedFoodImage } from "@/utils/groq";
 import * as FileSystem from "expo-file-system";
 import { decode } from "base64-arraybuffer";
 import FoodSavingsCard from "@/components/FoodSavingsCard";
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
 
 const Create = () => {
   const [image, setImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [foodCardData, setFoodCardData] = useState<FoodCardData | null>(null);
+  const [isHomeCooked, setIsHomeCooked] = useState(false);
+  const [fontsLoaded] = useFonts({
+    ...FontAwesome.font,
+  });
+
+  useEffect(() => {
+    async function prepare() {
+      await SplashScreen.preventAutoHideAsync();
+    }
+    prepare();
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null; // or a loading indicator
+  }
 
   const pickImage = async () => {
     // Reset states
@@ -78,14 +98,12 @@ const Create = () => {
     setAnalyzing(false);
 
     try {
-      // Create a unique file name
       const fileExt = image.split(".").pop()?.toLowerCase() || "jpg";
       const fileName = `upload-${Date.now()}.${fileExt}`;
       const mimeType = fileExt === "png" ? "image/png" : "image/jpeg";
 
       console.log("Starting upload for image:", image);
 
-      // Read the file as base64
       const base64 = await FileSystem.readAsStringAsync(image, {
         encoding: FileSystem.EncodingType.Base64,
       });
@@ -110,16 +128,13 @@ const Create = () => {
       console.log("Image uploaded successfully. Public URL:", publicUrl);
 
       try {
-        // Start analyzing the image
         setUploading(false);
         setAnalyzing(true);
         console.log("Attempting to analyze image with OpenAI GPT-4o...");
 
-        // Verify the URL is valid and accessible
         console.log("Image URL for analysis:", publicUrl);
 
         try {
-          // Test that the image URL is accessible
           const response = await fetch(publicUrl, { method: "HEAD" });
           if (!response.ok) {
             console.error(
@@ -133,17 +148,14 @@ const Create = () => {
           console.log("Image URL is accessible, status:", response.status);
         } catch (fetchError) {
           console.error("Error verifying image URL:", fetchError);
-          // Continue anyway, as the error might be due to CORS, but OpenAI might still access it
           console.log(
             "Continuing with analysis despite URL verification error"
           );
         }
 
-        // Use our processUploadedFoodImage function to get structured card data
         const cardData = await processUploadedFoodImage(publicUrl);
         console.log("Food card data:", JSON.stringify(cardData, null, 2));
 
-        // Insert data using the correct column names from the schema
         const { data: insertData, error: insertError } = await supabase
           .from("genai")
           .insert({
@@ -151,7 +163,7 @@ const Create = () => {
             image: publicUrl,
             estimatedHomeCookedPrice: cardData.homeCookedPrice,
             recipe: cardData.ingredients,
-            homeCooked: true,
+            homeCooked: isHomeCooked,
             resturantPrice: cardData.restaurantPrice,
             created_at: new Date().toISOString(),
           });
@@ -213,9 +225,9 @@ const Create = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Add Meal</Text>
+    <ScrollView className="flex-1 bg-[#F7F9FC]">
+      <View className="pt-5 px-5 pb-2.5 bg-white border-b border-black/5">
+        <Text className="text-2xl font-semibold text-[#333333]">Add Meal</Text>
       </View>
 
       {!image ? (
@@ -243,6 +255,19 @@ const Create = () => {
         <View style={styles.imagePreviewContainer}>
           <Image source={{ uri: image }} style={styles.imagePreview} />
 
+          <View style={styles.toggleContainer}>
+            <Text style={styles.toggleLabel}>
+              {isHomeCooked ? "Home-cooked Meal" : "Restaurant Meal"}
+            </Text>
+            <Switch
+              trackColor={{ false: "#767577", true: "#c4e8d4" }}
+              thumbColor={isHomeCooked ? "#00AA5B" : "#f4f3f4"}
+              ios_backgroundColor="#3e3e3e"
+              onValueChange={() => setIsHomeCooked((prevState) => !prevState)}
+              value={isHomeCooked}
+            />
+          </View>
+
           <View style={styles.buttonRow}>
             <TouchableOpacity
               style={styles.circleButton}
@@ -265,23 +290,22 @@ const Create = () => {
           </View>
 
           {(uploading || analyzing) && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#00AA5B" />
-              <Text style={styles.loadingText}>
-                {uploading
-                  ? "Uploading image..."
-                  : "Analyzing your meal... This might take a minute."}
-              </Text>
+            <View className="absolute inset-0 bg-black/30 justify-center items-center z-50 left-0 right-0 top-0 bottom-0 h-full w-full">
+              <View className="bg-white p-5 rounded-2xl shadow w-4/5 items-center justify-center">
+                <ActivityIndicator size="large" color="#00AA5B" />
+                <Text className="mt-3 text-base text-center text-[#666666]">
+                  {uploading
+                    ? "Uploading image..."
+                    : "Analyzing your meal... This might take a minute."}
+                </Text>
+              </View>
             </View>
           )}
 
           {foodCardData && (
             <View style={styles.analysisResultContainer}>
               <FoodSavingsCard cardData={foodCardData} />
-              <TouchableOpacity
-                style={styles.resetButton}
-                onPress={resetAll}
-              >
+              <TouchableOpacity style={styles.resetButton} onPress={resetAll}>
                 <Text style={styles.resetButtonText}>Take Another Photo</Text>
               </TouchableOpacity>
             </View>
@@ -389,10 +413,20 @@ const styles = StyleSheet.create({
   analyzeButton: {
     backgroundColor: "#00AA5B",
   },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
   loadingContainer: {
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 20,
     backgroundColor: "#FFFFFF",
     padding: 20,
     borderRadius: 16,
@@ -401,6 +435,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    width: "80%",
   },
   loadingText: {
     marginTop: 12,
@@ -419,6 +454,25 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   resetButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333333",
+  },
+  toggleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  toggleLabel: {
     fontSize: 16,
     fontWeight: "600",
     color: "#333333",

@@ -1,5 +1,5 @@
 import supabase from "@/utils/supabase";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -14,6 +14,7 @@ import {
   PieChart,
   ProgressChart,
 } from "react-native-chart-kit";
+import { useFocusEffect } from "@react-navigation/native";
 
 // Get the screen dimensions
 const screenWidth = Dimensions.get("window").width;
@@ -45,39 +46,45 @@ const ChartKitDemo = () => {
     dataset?: number;
   } | null>(null);
 
-  // Fetch meal data from Supabase with date information
-  useEffect(() => {
-    async function fetchMeals() {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from("genai")
-          .select(
-            "id, meal, estimatedHomeCookedPrice, resturantPrice, homeCooked, created_at"
-          )
-          .order("created_at", { ascending: true });
+  // Replace the useEffect with useFocusEffect to fetch data every time the page is focused
+  useFocusEffect(
+    useCallback(() => {
+      fetchMeals();
+      return () => {
+        // Optional cleanup function
+      };
+    }, [])
+  );
 
-        if (error) throw error;
+  // Move the fetchMeals function outside of useEffect
+  async function fetchMeals() {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("genai")
+        .select(
+          "id, meal, estimatedHomeCookedPrice, resturantPrice, homeCooked, created_at"
+        )
+        .order("created_at", { ascending: true });
 
-        // Transform data to include createdAt as JavaScript date
-        const transformedData = (data || []).map((item) => ({
-          ...item,
-          createdAt: item.created_at,
-        }));
+      if (error) throw error;
 
-        setMeals(transformedData || []);
-      } catch (err) {
-        console.error("Error fetching meals:", err);
-        setError(
-          err instanceof Error ? err.message : "An unknown error occurred"
-        );
-      } finally {
-        setLoading(false);
-      }
+      // Transform data to include createdAt as JavaScript date
+      const transformedData = (data || []).map((item) => ({
+        ...item,
+        createdAt: item.created_at,
+      }));
+
+      setMeals(transformedData || []);
+    } catch (err) {
+      console.error("Error fetching meals:", err);
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred"
+      );
+    } finally {
+      setLoading(false);
     }
-
-    fetchMeals();
-  }, []);
+  }
 
   // Filter meals based on selected time period
   const getFilteredMeals = () => {
@@ -438,11 +445,11 @@ const ChartKitDemo = () => {
           <View style={styles.chartWrapper}>
             <LineChart
               data={savingsTimeSeriesData}
-              width={screenWidth - 50} // Adjusted width to fit inside container
+              width={screenWidth - 50}
               height={220}
               chartConfig={{
                 ...lineChartConfig,
-                color: (opacity = 1) => `rgba(0, 170, 91, ${opacity})`, // Wealthsimple green
+                color: (opacity = 1) => `rgba(0, 170, 91, ${opacity})`,
                 propsForDots: {
                   r: "4",
                   strokeWidth: "2",
@@ -487,7 +494,7 @@ const ChartKitDemo = () => {
                   },
                 ],
               }}
-              width={screenWidth - 50} // Adjusted width to fit inside container
+              width={screenWidth - 50}
               height={220}
               chartConfig={{
                 ...lineChartConfig,
@@ -513,9 +520,28 @@ const ChartKitDemo = () => {
               <Text style={styles.dataPointValue}>
                 ${selectedDataPoint.value.toFixed(2)}
               </Text>
-              <Text style={styles.dataPointSubtext}>
-                {selectedDataPoint.dataset === 0 ? "Restaurant" : "Home Cooked"}
-              </Text>
+
+              {(() => {
+                const restaurantValue =
+                  priceComparisonData.datasets[0].data[selectedDataPoint.index];
+                if (selectedDataPoint.value > restaurantValue) {
+                  return (
+                    <Text
+                      style={[styles.dataPointSubtext, { color: "#EB5757" }]}
+                    >
+                      Restaurant Cooked
+                    </Text>
+                  );
+                } else if (selectedDataPoint.value < restaurantValue) {
+                  return (
+                    <Text
+                      style={[styles.dataPointSubtext, { color: "#00AA5B" }]}
+                    >
+                      Home Cooked
+                    </Text>
+                  );
+                }
+              })()}
             </View>
           )}
         </View>
@@ -529,16 +555,16 @@ const ChartKitDemo = () => {
               data={[
                 {
                   ...savingsData[0],
-                  color: "#EB5757", // Changed to red for home cost
+                  color: "#EB5757",
                   legendFontColor: "#555555",
                 },
                 {
                   ...savingsData[1],
-                  color: "#00AA5B", // Wealthsimple green for savings
+                  color: "#00AA5B",
                   legendFontColor: "#555555",
                 },
               ]}
-              width={screenWidth - 50} // Adjusted width to fit inside container
+              width={screenWidth - 50}
               height={220}
               chartConfig={chartConfig}
               accessor="population"

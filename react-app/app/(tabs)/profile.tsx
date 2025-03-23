@@ -1,5 +1,5 @@
 import supabase from "@/utils/supabase";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Text,
   View,
@@ -11,6 +11,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 
 export interface RecipeIngredient {
   type: string;
@@ -36,9 +37,12 @@ const Profile = () => {
   const [error, setError] = useState<string | null>(null);
   const [totalSaved, setTotalSaved] = useState(0);
 
-  useEffect(() => {
-    fetchDishes();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchDishes();
+      return () => {};
+    }, [])
+  );
 
   const fetchDishes = async () => {
     try {

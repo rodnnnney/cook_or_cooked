@@ -1,8 +1,6 @@
 import { Tabs } from "expo-router";
-import React from "react";
 import { FontAwesome } from "@expo/vector-icons";
-import { View, TouchableOpacity } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View } from "react-native";
 
 const _Layout = () => {
   return (
@@ -33,20 +31,11 @@ const _Layout = () => {
           title: "Home",
           headerShown: false,
           tabBarIcon: ({ color }) => (
-            <FontAwesome name="home" size={24} color={color} />
+            <FontAwesome name="user" size={24} color={color} />
           ),
         }}
       />
-      <Tabs.Screen
-        name="search"
-        options={{
-          title: "Search",
-          headerShown: false,
-          tabBarIcon: ({ color }) => (
-            <FontAwesome name="search" size={24} color={color} />
-          ),
-        }}
-      />
+
       <Tabs.Screen
         name="create"
         options={{
@@ -75,22 +64,12 @@ const _Layout = () => {
         }}
       />
       <Tabs.Screen
-        name="saved"
-        options={{
-          title: "Saved",
-          headerShown: false,
-          tabBarIcon: ({ color }) => (
-            <FontAwesome name="bookmark" size={24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: "History",
           headerShown: false,
           tabBarIcon: ({ color }) => (
-            <FontAwesome name="user" size={24} color={color} />
+            <FontAwesome name="list" size={24} color={color} />
           ),
         }}
       />
