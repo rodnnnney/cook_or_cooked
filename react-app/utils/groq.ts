@@ -1,5 +1,6 @@
 import { Groq } from "groq-sdk";
 import OpenAI from "openai";
+import { ingredientPrices } from "./ingredientPrices";
 
 // React Native environment variables are accessed via process.env.EXPO_PUBLIC_*
 // Make sure your .env file has EXPO_PUBLIC_OPENAI_API_KEY defined
@@ -57,6 +58,90 @@ export interface FoodCardData {
 const normalizePrice = (price: number, digits = 2): number => {
   // Round to specified digits
   return Math.round(price * Math.pow(10, digits)) / Math.pow(10, digits);
+};
+
+const updateIngredientPrices = (
+  recipe: RecipeIngredient[]
+): RecipeIngredient[] => {
+  // Create a copy of the recipe to avoid modifying the original
+  const updatedRecipe = [...recipe];
+
+  // Helper function to normalize ingredient names (lowercase, no spaces or symbols)
+  const normalizeIngredientName = (name: string): string => {
+    return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  };
+
+  // Create a normalized version of our ingredients dictionary for matching
+  const normalizedIngredientPrices: {
+    [key: string]: { originalKey: string; price: number };
+  } = {};
+
+  // Populate the normalized dictionary
+  Object.keys(ingredientPrices).forEach((key) => {
+    const normalizedKey = normalizeIngredientName(key);
+    normalizedIngredientPrices[normalizedKey] = {
+      originalKey: key,
+      price: ingredientPrices[key],
+    };
+  });
+
+  // Loop through each ingredient in the recipe
+  for (let i = 0; i < updatedRecipe.length; i++) {
+    const ingredient = updatedRecipe[i];
+
+    // Get the normalized ingredient name
+    const normalizedIngredientName = normalizeIngredientName(ingredient.type);
+
+    // Try to find the exact ingredient name in our normalized dictionary
+    if (normalizedIngredientPrices[normalizedIngredientName] !== undefined) {
+      // Update the price if found
+      updatedRecipe[i] = {
+        ...ingredient,
+        pricePerGram:
+          normalizedIngredientPrices[normalizedIngredientName].price,
+      };
+      continue;
+    }
+
+    // If not found, try to find a partial match
+    const partialMatches = Object.keys(normalizedIngredientPrices).filter(
+      (key) =>
+        normalizedIngredientName.includes(key) ||
+        key.includes(normalizedIngredientName)
+    );
+
+    if (partialMatches.length > 0) {
+      // Sort by length descending to prioritize more specific matches
+      // e.g., "groundbeef" over just "beef"
+      partialMatches.sort((a, b) => b.length - a.length);
+
+      // Update the price with the best match
+      updatedRecipe[i] = {
+        ...ingredient,
+        pricePerGram: normalizedIngredientPrices[partialMatches[0]].price,
+      };
+    }
+    // If no match found, keep the original price
+  }
+
+  return updatedRecipe;
+};
+
+/**
+ * Recalculate the total home-cooked price based on updated ingredient prices
+ */
+const recalculateHomeCookedPrice = (recipe: RecipeIngredient[]): number => {
+  let totalPrice = 0;
+
+  for (const ingredient of recipe) {
+    totalPrice += ingredient.amount * ingredient.pricePerGram;
+  }
+
+  // Add a small markup for utilities and miscellaneous ingredients (e.g., salt, pepper, oil)
+  // You can adjust this percentage as needed
+  const utilityMarkup = 1.15; // 15% markup
+
+  return totalPrice * utilityMarkup;
 };
 
 /**
@@ -224,6 +309,22 @@ ${analysisText}`;
       try {
         mealInfo = JSON.parse(jsonResponse) as MealAnalysis;
         console.log("Successfully parsed JSON response");
+        
+        // *** Add these lines to update the ingredient prices ***
+        console.log("Updating ingredient prices with accurate data");
+        
+        // Update ingredient prices with our dictionary values
+        mealInfo.recipe = updateIngredientPrices(mealInfo.recipe);
+        
+        // Recalculate the home-cooked price based on our updated ingredient prices
+        if (!given_homecooked_price) {
+          // Only recalculate if user didn't provide a specific price
+          const recalculatedPrice = recalculateHomeCookedPrice(mealInfo.recipe);
+          
+          // Consider both the AI-generated price and our recalculated price
+          // We can use a weighted average or just take the recalculated value
+          mealInfo.estimatedHomeCookedPrice = recalculatedPrice;
+        }
       } catch (initialParseError) {
         console.error("Initial JSON parse error:", initialParseError);
 
