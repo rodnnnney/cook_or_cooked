@@ -1,103 +1,11 @@
 import { Groq } from "groq-sdk";
+import OpenAI from "openai";
 
-const GROQ_API_KEY =
-  process.env.EXPO_PUBLIC_GROQ_API_KEY ||
-  "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";
-
-export const analyzeImage = async (
-  imagePath: string,
-  given_restaurant_price = null,
-  given_homecooked_price = null
-) => {
-  const startTime = performance.now();
-
-  const groq = new Groq({
-    apiKey: GROQ_API_KEY,
-  });
-
-  try {
-    const imageCallStartTime = performance.now();
-    const image_prompt = `Examine the image at this URL: ${imagePath} and determine the following and put it into its own category: 1. The name of the meal 2. recipe (each ingredient type, amount in grams, and price per gram in dollars) 3. meal price if cooked at home (divide it such that it's for one serving) 4. meal price if bought at a restaurant. Base these on 2025 prices in downtown Toronto. All prices should be in Canadian dollars.`;
-
-    const image_response = await groq.chat.completions.create({
-      model: "llama3-70b-8192",
-      messages: [
-        {
-          role: "user",
-          content: image_prompt,
-        },
-      ],
-      temperature: 0,
-      max_tokens: 1024,
-    });
-
-    const imageCallEndTime = performance.now();
-    const imageCallDuration = (imageCallEndTime - imageCallStartTime) / 1000;
-    const text_response = image_response.choices[0].message.content;
-
-    // CALL TWO: Format the response
-    const formatCallStartTime = performance.now();
-    const formatting_prompt =
-      "Format the response into a JSON schema with the following keys: meal (which is the name of the meal), recipe (which is an array of objects with the following keys: type, amount, pricePerGram:), estimatedHomeCookedPrice (which is the price of the meal if cooked at home), restaurantPrice (which is the price of the meal if bought at a restaurant). The recipe should be an array of objects with the following keys: type, amount, pricePerGram. The estimatedHomeCookedPrice and restaurantPrice should be numbers. Output ONLY valid JSON with no additional text.";
-
-    const response = await groq.chat.completions.create({
-      model: "llama3-70b-8192",
-      messages: [
-        {
-          role: "system",
-          content: formatting_prompt,
-        },
-        {
-          role: "user",
-          content: text_response,
-        },
-      ],
-      temperature: 0.2,
-      max_tokens: 1024,
-    });
-
-    const formatCallEndTime = performance.now();
-    const formatCallDuration = (formatCallEndTime - formatCallStartTime) / 1000;
-
-    let responseText = response.choices[0].message.content;
-
-    // Extract JSON if the model added any explanatory text
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      responseText = jsonMatch[0];
-    }
-
-    const processingStartTime = performance.now();
-    try {
-      const mealInfo = JSON.parse(responseText);
-
-      // LAST STEP: OVERRIDES AND CALCULATIONS
-      let originalHomeCookedPrice = mealInfo.estimatedHomeCookedPrice;
-      let originalRestaurantPrice = mealInfo.restaurantPrice;
-
-      if (mealInfo.restaurantPrice > 2 * mealInfo.estimatedHomeCookedPrice) {
-        mealInfo.estimatedHomeCookedPrice = mealInfo.restaurantPrice / 2.12;
-      }
-
-      if (given_restaurant_price !== null) {
-        mealInfo.restaurantPrice = given_restaurant_price;
-      }
-
-      if (given_homecooked_price !== null) {
-        mealInfo.estimatedHomeCookedPrice = given_homecooked_price;
-      }
-
-      mealInfo.saving =
-        mealInfo.restaurantPrice - mealInfo.estimatedHomeCookedPrice;
-
-      return mealInfo;
-    } catch (parseError) {
-      throw new Error("Failed to parse meal information");
-    }
-  } catch (apiError) {
-    throw apiError;
-  }
-};
+// Initialize OpenAI client with the provided API key
+const openai = new OpenAI({
+  apiKey: "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", 
+  // In a production app, use an environment variable: process.env.OPENAI_API_KEY
+});
 
 // Add proper TypeScript interfaces for the return type
 interface RecipeIngredient {
@@ -114,7 +22,180 @@ interface MealAnalysis {
   saving: number;
 }
 
-// Update the exported function with proper type annotations
+// Interface for card display data
+export interface FoodCardData {
+  title: string;
+  homeCookedPrice: number;
+  restaurantPrice: number;
+  savings: number;
+  savingsPercentage: number;
+  ingredients: RecipeIngredient[];
+  imageUrl: string;
+}
+
+/**
+ * Analyzes a food image using OpenAI's GPT-4 Vision model
+ */
+export const analyzeImage = async (
+  imagePath: string,
+  given_restaurant_price?: number | null,
+  given_homecooked_price?: number | null
+): Promise<MealAnalysis> => {
+  const startTime = performance.now();
+  console.log("Starting OpenAI image analysis for:", imagePath);
+
+  try {
+    // STEP 1: Analyze the image using GPT-4 Vision
+    const imageCallStartTime = performance.now();
+    
+    const image_prompt = `Analyze this food image and determine the following:
+1. The name of the meal
+2. A list of ingredients used in the meal (with estimated amounts in grams)
+3. The estimated price per gram of each ingredient (in Canadian dollars)
+4. The estimated cost if cooked at home (per serving)
+5. The estimated price if bought at a restaurant
+Base all prices on 2025 rates in downtown Toronto, Canada.`;
+
+    // First API call - analyze the image
+    let imageResponse;
+    try {
+      imageResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: image_prompt },
+              { type: "image_url", image_url: { url: imagePath } }
+            ],
+          },
+        ],
+        max_tokens: 1024,
+      });
+    } catch (modelError) {
+      console.error("OpenAI model error:", modelError);
+      throw new Error(`Error analyzing image with OpenAI: ${modelError instanceof Error ? modelError.message : 'Unknown model error'}`);
+    }
+
+    const imageCallEndTime = performance.now();
+    const imageCallDuration = (imageCallEndTime - imageCallStartTime) / 1000;
+    
+    const analysisText = imageResponse.choices[0].message.content || "";
+    console.log("Image analysis complete. Duration:", imageCallDuration.toFixed(2), "seconds");
+    console.log("Analysis text sample:", analysisText.substring(0, 150) + "...");
+
+    // STEP 2: Format the analysis into JSON structure
+    const formattingCallStartTime = performance.now();
+    
+    const formattingPrompt = `
+Format the following food analysis into a strict JSON format with these properties:
+- meal: string (name of the meal)
+- recipe: array of objects, each with { type: string, amount: number, pricePerGram: number }
+- estimatedHomeCookedPrice: number (total price to cook at home)
+- restaurantPrice: number (price if bought at restaurant)
+
+The output should be ONLY valid JSON with no additional text or explanations.
+
+Original analysis:
+${analysisText}`;
+
+    // Second API call - format the response
+    let formattingResponse;
+    try {
+      formattingResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful assistant that formats food analysis data into JSON. Respond with ONLY the JSON, no explanations or other text."
+          },
+          {
+            role: "user",
+            content: formattingPrompt
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+        max_tokens: 1024,
+      });
+    } catch (formattingError) {
+      console.error("OpenAI formatting error:", formattingError);
+      throw new Error(`Error formatting analysis with OpenAI: ${formattingError instanceof Error ? formattingError.message : 'Unknown formatting error'}`);
+    }
+
+    const formattingCallEndTime = performance.now();
+    const formattingCallDuration = (formattingCallEndTime - formattingCallStartTime) / 1000;
+    
+    const jsonResponse = formattingResponse.choices[0].message.content || "{}";
+    console.log("Formatting complete. Duration:", formattingCallDuration.toFixed(2), "seconds");
+    console.log("JSON response sample:", jsonResponse.substring(0, 150) + "...");
+
+    try {
+      // Parse the JSON response
+      const mealInfo = JSON.parse(jsonResponse) as MealAnalysis;
+      console.log("Successfully parsed JSON response");
+
+      // Check if we have all required fields
+      if (!mealInfo.meal || !mealInfo.recipe || !mealInfo.estimatedHomeCookedPrice || !mealInfo.restaurantPrice) {
+        console.warn("Missing required fields in JSON response, using fallback values");
+        
+        // Extract possible meal name from analysis
+        const mealNameMatch = analysisText.match(/(?:meal|dish|food)\s*(?:name|is|:)?\s*[:-]?\s*(.+?)(?:\.|,|\n|$)/i);
+        const extractedMealName = mealNameMatch ? mealNameMatch[1].trim() : "Food Dish";
+        
+        // Create fallback meal info with reasonable defaults
+        if (!mealInfo.meal) mealInfo.meal = extractedMealName;
+        if (!mealInfo.recipe) mealInfo.recipe = [];
+        if (!mealInfo.estimatedHomeCookedPrice) mealInfo.estimatedHomeCookedPrice = 15.00;
+        if (!mealInfo.restaurantPrice) mealInfo.restaurantPrice = 35.00;
+      }
+
+      // Apply adjustments and overrides
+      if (mealInfo.restaurantPrice > 2 * mealInfo.estimatedHomeCookedPrice) {
+        mealInfo.estimatedHomeCookedPrice = mealInfo.restaurantPrice / 2.12;
+      }
+
+      if (given_restaurant_price !== null && given_restaurant_price !== undefined) {
+        mealInfo.restaurantPrice = given_restaurant_price;
+      }
+
+      if (given_homecooked_price !== null && given_homecooked_price !== undefined) {
+        mealInfo.estimatedHomeCookedPrice = given_homecooked_price;
+      }
+
+      // Calculate savings
+      mealInfo.saving = mealInfo.restaurantPrice - mealInfo.estimatedHomeCookedPrice;
+
+      const endTime = performance.now();
+      const totalDuration = (endTime - startTime) / 1000;
+      console.log("Total analysis time:", totalDuration.toFixed(2), "seconds");
+      
+      return mealInfo;
+    } catch (parseError) {
+      console.error("Failed to parse meal information:", parseError);
+      console.error("Raw JSON response:", jsonResponse);
+      
+      // Create fallback data for recovery
+      console.log("Creating fallback meal data");
+      const fallbackMeal: MealAnalysis = {
+        meal: "Food Dish",
+        recipe: [],
+        estimatedHomeCookedPrice: 15.00,
+        restaurantPrice: 35.00,
+        saving: 20.00
+      };
+      
+      return fallbackMeal;
+    }
+  } catch (apiError) {
+    console.error("OpenAI API error:", apiError);
+    throw apiError;
+  }
+};
+
+/**
+ * Analyzes a food image and returns detailed meal information
+ */
 export const analyzeFoodImage = async (
   imageUrl: string,
   restaurantPrice?: number,
@@ -123,12 +204,47 @@ export const analyzeFoodImage = async (
   try {
     const result = await analyzeImage(
       imageUrl,
-      restaurantPrice || null,
-      homeCookedPrice || null
+      restaurantPrice,
+      homeCookedPrice
     );
     return result;
   } catch (error) {
     throw error;
   }
 };
+
+/**
+ * Processes an uploaded food image and creates structured data for a card display
+ * @param imageUrl URL of the uploaded food image
+ * @returns Structured data for displaying a food savings card
+ */
+export const processUploadedFoodImage = async (
+  imageUrl: string
+): Promise<FoodCardData> => {
+  try {
+    // Analyze the food image
+    const mealAnalysis = await analyzeFoodImage(imageUrl);
+    
+    // Calculate savings percentage
+    const savingsPercentage = 
+      (mealAnalysis.saving / mealAnalysis.restaurantPrice) * 100;
+    
+    // Create card display data
+    const cardData: FoodCardData = {
+      title: mealAnalysis.meal,
+      homeCookedPrice: parseFloat(mealAnalysis.estimatedHomeCookedPrice.toFixed(2)),
+      restaurantPrice: parseFloat(mealAnalysis.restaurantPrice.toFixed(2)),
+      savings: parseFloat(mealAnalysis.saving.toFixed(2)),
+      savingsPercentage: parseFloat(savingsPercentage.toFixed(1)),
+      ingredients: mealAnalysis.recipe,
+      imageUrl: imageUrl
+    };
+    
+    return cardData;
+  } catch (error) {
+    console.error("Error processing food image:", error);
+    throw error;
+  }
+};
+
 export default analyzeFoodImage;

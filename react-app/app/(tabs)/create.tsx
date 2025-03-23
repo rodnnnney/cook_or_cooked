@@ -6,19 +6,26 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { FontAwesome } from "@expo/vector-icons";
 import supabase from "@/utils/supabase";
-import { analyzeImage } from "@/utils/groq";
+import { analyzeImage, processUploadedFoodImage, FoodCardData } from "@/utils/groq";
 import * as FileSystem from "expo-file-system";
 import { decode } from "base64-arraybuffer";
+import FoodSavingsCard from "@/components/FoodSavingsCard";
 
 const Create = () => {
   const [image, setImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [foodCardData, setFoodCardData] = useState<FoodCardData | null>(null);
 
   const pickImage = async () => {
+    // Reset states
+    setFoodCardData(null);
+    
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -32,6 +39,9 @@ const Create = () => {
   };
 
   const takePhoto = async () => {
+    // Reset states
+    setFoodCardData(null);
+    
     const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
 
     if (cameraPermission.status !== "granted") {
@@ -60,6 +70,7 @@ const Create = () => {
     }
 
     setUploading(true);
+    setAnalyzing(false);
 
     try {
       // Create a unique file name
@@ -97,94 +108,147 @@ const Create = () => {
       console.log("Image uploaded successfully. Public URL:", publicUrl);
 
       try {
-        console.log("Attempting to analyze image...");
-        const analysisResult = await analyzeImage(publicUrl);
-        console.log(
-          "Analysis result:",
-          JSON.stringify(analysisResult, null, 2)
+        // Start analyzing the image
+        setUploading(false);
+        setAnalyzing(true);
+        console.log("Attempting to analyze image with OpenAI GPT-4 Vision...");
+        
+        // Use our processUploadedFoodImage function to get structured card data
+        const cardData = await processUploadedFoodImage(publicUrl);
+        console.log("Food card data:", JSON.stringify(cardData, null, 2));
+        
+        // Set the card data to display it
+        setFoodCardData(cardData);
+        setAnalyzing(false);
+        
+        // Show success message
+        Alert.alert(
+          "Analysis Complete",
+          `Successfully analyzed ${cardData.title}. You could save $${cardData.savings.toFixed(2)} by cooking at home!`
         );
-
-        Alert.alert("Success", "Image uploaded and analyzed successfully!");
-        setImage(null);
       } catch (analysisError) {
         console.error("Analysis error:", analysisError);
+        let errorMessage = "Image was uploaded but couldn't be analyzed.";
+        
+        if (analysisError instanceof Error) {
+          errorMessage += " " + analysisError.message;
+          console.error("Error details:", analysisError.stack);
+        } else {
+          console.error("Unknown error type:", typeof analysisError);
+        }
+        
+        setAnalyzing(false);
         Alert.alert(
           "Analysis Failed",
-          "Image was uploaded but couldn't be analyzed. " +
-            (analysisError instanceof Error
-              ? analysisError.message
-              : "Unknown error")
+          errorMessage
         );
       }
     } catch (error) {
-      console.error("Detailed error:", error);
-      Alert.alert(
-        "Upload Failed",
-        error instanceof Error
-          ? error.message
-          : "An error occurred during upload"
-      );
+      console.error("Upload error:", error);
+      let errorMessage = "An error occurred during upload";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error("Error details:", error.stack);
+      }
+      
+      setUploading(false);
+      setAnalyzing(false);
+      Alert.alert("Upload Failed", errorMessage);
     } finally {
       setUploading(false);
     }
   };
 
-  return (
-    <View className="flex-1 p-5 bg-white">
-      <Text className="text-2xl font-bold mb-5 text-center">
-        Create New Post
-      </Text>
+  const resetAll = () => {
+    setImage(null);
+    setFoodCardData(null);
+  };
 
-      <View className="h-[300px] w-full rounded-xl overflow-hidden bg-gray-100 mb-5 justify-center items-center border border-gray-200">
-        {image ? (
-          <Image source={{ uri: image }} className="w-full h-full" />
-        ) : (
-          <View className="items-center justify-center">
-            <FontAwesome name="image" size={80} color="#cccccc" />
-            <Text className="mt-2 text-gray-500 text-base">
-              No image selected
-            </Text>
+  return (
+    <ScrollView className="flex-1 bg-white">
+      <View className="p-5">
+        <Text className="text-2xl font-bold mb-5 text-center">
+          Food Cost Analyzer
+        </Text>
+
+        {!foodCardData && (
+          <>
+            <View className="h-[300px] w-full rounded-xl overflow-hidden bg-gray-100 mb-5 justify-center items-center border border-gray-200">
+              {image ? (
+                <Image source={{ uri: image }} className="w-full h-full" />
+              ) : (
+                <View className="items-center justify-center">
+                  <FontAwesome name="image" size={80} color="#cccccc" />
+                  <Text className="mt-2 text-gray-500 text-base">
+                    No image selected
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <View className="flex-row justify-around mb-5">
+              <TouchableOpacity
+                className="bg-blue-500 py-3 px-6 rounded-lg flex-row items-center justify-center"
+                onPress={pickImage}
+              >
+                <FontAwesome name="photo" size={20} color="white" />
+                <Text className="text-white font-bold ml-2">Gallery</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="bg-blue-500 py-3 px-6 rounded-lg flex-row items-center justify-center"
+                onPress={takePhoto}
+              >
+                <FontAwesome name="camera" size={20} color="white" />
+                <Text className="text-white font-bold ml-2">Camera</Text>
+              </TouchableOpacity>
+            </View>
+
+            {image && (
+              <TouchableOpacity
+                className={`bg-green-500 py-4 rounded-lg flex-row items-center justify-center ${
+                  uploading || analyzing ? "bg-green-300" : ""
+                }`}
+                onPress={uploadImage}
+                disabled={uploading || analyzing}
+              >
+                {uploading ? (
+                  <>
+                    <ActivityIndicator color="white" />
+                    <Text className="text-white font-bold ml-2">Uploading...</Text>
+                  </>
+                ) : analyzing ? (
+                  <>
+                    <ActivityIndicator color="white" />
+                    <Text className="text-white font-bold ml-2">Analyzing food image...</Text>
+                  </>
+                ) : (
+                  <>
+                    <FontAwesome name="cloud-upload" size={20} color="white" />
+                    <Text className="text-white font-bold ml-2">Analyze Food</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+
+        {foodCardData && (
+          <View className="mb-5">
+            <FoodSavingsCard cardData={foodCardData} />
+            
+            <TouchableOpacity
+              className="bg-blue-500 py-4 rounded-lg flex-row items-center justify-center mt-5"
+              onPress={resetAll}
+            >
+              <FontAwesome name="refresh" size={20} color="white" />
+              <Text className="text-white font-bold ml-2">Analyze Another Image</Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>
-
-      <View className="flex-row justify-around mb-5">
-        <TouchableOpacity
-          className="bg-blue-500 py-3 px-6 rounded-lg flex-row items-center justify-center"
-          onPress={pickImage}
-        >
-          <FontAwesome name="photo" size={20} color="white" />
-          <Text className="text-white font-bold ml-2">Gallery</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          className="bg-blue-500 py-3 px-6 rounded-lg flex-row items-center justify-center"
-          onPress={takePhoto}
-        >
-          <FontAwesome name="camera" size={20} color="white" />
-          <Text className="text-white font-bold ml-2">Camera</Text>
-        </TouchableOpacity>
-      </View>
-
-      {image && (
-        <TouchableOpacity
-          className={`bg-green-500 py-4 rounded-lg flex-row items-center justify-center ${
-            uploading ? "bg-green-300" : ""
-          }`}
-          onPress={uploadImage}
-          disabled={uploading}
-        >
-          {uploading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <>
-              <FontAwesome name="cloud-upload" size={20} color="white" />
-              <Text className="text-white font-bold ml-2">Upload Image</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      )}
-    </View>
+    </ScrollView>
   );
 };
 
